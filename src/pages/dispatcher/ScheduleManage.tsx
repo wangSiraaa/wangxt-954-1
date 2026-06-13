@@ -17,12 +17,9 @@ function formatDate(year: number, month: number, day: number) {
 }
 
 export default function ScheduleManage() {
-  const schedules = useScheduleStore((s) => s.schedules);
-  const addSchedule = useScheduleStore((s) => s.addSchedule);
-  const deleteSchedule = useScheduleStore((s) => s.deleteSchedule);
-  const ships = useShipStore((s) => s.ships);
-  const stopDays = useStopDayStore((s) => s.stopDays);
-  const isStopDayFn = useStopDayStore((s) => s.isStopDay);
+  const { schedules, addSchedule, deleteSchedule, getByDate } = useScheduleStore();
+  const { ships } = useShipStore();
+  const { isStopDay } = useStopDayStore();
 
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -37,30 +34,19 @@ export default function ScheduleManage() {
     totalSeats: 0,
   });
 
-  const availableShips = useMemo(
-    () => ships.filter((s) => s.status === "available"),
-    [ships]
-  );
+  const availableShips = ships.filter((s) => s.status === "available");
+  const daySchedules = getByDate(selectedDate);
 
-  const daySchedules = useMemo(
-    () => schedules.filter((s) => s.date === selectedDate),
-    [schedules, selectedDate]
-  );
-
-  const isStopDay = useMemo(
-    () => stopDays.some((d) => d.date === selectedDate),
-    [stopDays, selectedDate]
-  );
+  const daysInMonth = getDaysInMonth(calYear, calMonth);
+  const firstDay = getFirstDayOfMonth(calYear, calMonth);
   const weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
 
   const calendarCells = useMemo(() => {
-    const daysInMonth = getDaysInMonth(calYear, calMonth);
-    const firstDay = getFirstDayOfMonth(calYear, calMonth);
     const cells: (number | null)[] = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
     return cells;
-  }, [calYear, calMonth]);
+  }, [calYear, calMonth, daysInMonth, firstDay]);
 
   const prevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
@@ -142,7 +128,7 @@ export default function ScheduleManage() {
               if (day === null) return <div key={`e${i}`} />;
               const dateStr = formatDate(calYear, calMonth, day);
               const selected = dateStr === selectedDate;
-              const stopDay = isStopDayFn(dateStr);
+              const stopDay = isStopDay(dateStr);
               const hasSched = hasSchedule(day);
               return (
                 <button
@@ -178,7 +164,7 @@ export default function ScheduleManage() {
             </button>
           </div>
 
-          {isStopDay && (
+          {isStopDay(selectedDate) && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-600 text-sm">
               当日为停航日，无法添加班次
             </div>

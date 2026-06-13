@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { UserCheck, Calendar, Ship, Clock, Users, Anchor } from "lucide-react";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useOrderStore } from "@/store/useOrderStore";
@@ -9,17 +9,12 @@ export default function BoardingRegister() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [scheduleId, setScheduleId] = useState("");
 
-  const allSchedules = useScheduleStore((s) => s.schedules);
+  const schedules = useScheduleStore((s) => s.getByDate(date));
   const orders = useOrderStore((s) => s.orders);
   const ships = useShipStore((s) => s.ships);
   const boardingRecords = useBoardingStore((s) => s.boardingRecords);
   const markAsBoarded = useOrderStore((s) => s.markAsBoarded);
   const addBoardingRecord = useBoardingStore((s) => s.addBoardingRecord);
-
-  const schedules = useMemo(
-    () => allSchedules.filter((s) => s.date === date),
-    [allSchedules, date]
-  );
 
   const getShipName = (shipId: string) =>
     ships.find((s) => s.id === shipId)?.name ?? "未知游船";

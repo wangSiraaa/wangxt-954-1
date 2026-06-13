@@ -10,7 +10,7 @@ export default function MaintenanceManage() {
 
   useEffect(() => {
     refreshShipStatus();
-  }, [refreshShipStatus]);
+  }, []);
 
   const activeCount = maintenances.filter((m) => m.isActive).length;
   const totalCount = maintenances.length;

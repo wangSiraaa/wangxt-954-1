@@ -22,16 +22,16 @@ export default function StopDayCalendar() {
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [reasonInput, setReasonInput] = useState<{ date: string; reason: string } | null>(null);
 
+  const daysInMonth = getDaysInMonth(calYear, calMonth);
+  const firstDay = getFirstDayOfMonth(calYear, calMonth);
   const weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
 
   const calendarCells = useMemo(() => {
-    const daysInMonth = getDaysInMonth(calYear, calMonth);
-    const firstDay = getFirstDayOfMonth(calYear, calMonth);
     const cells: (number | null)[] = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
     return cells;
-  }, [calYear, calMonth]);
+  }, [calYear, calMonth, daysInMonth, firstDay]);
 
   const monthStopCount = stopDays.filter((sd) => {
     const d = new Date(sd.date);

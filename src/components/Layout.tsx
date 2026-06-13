@@ -12,6 +12,15 @@ import {
   LogOut,
   Menu,
   X,
+  LayoutDashboard,
+  Grid3X3,
+  ListChecks,
+  Clock,
+  AlertTriangle,
+  CreditCard,
+  ShieldCheck,
+  BarChart3,
+  QrCode,
 } from "lucide-react";
 
 type Role = "dispatcher" | "tourist" | "dock";
@@ -21,17 +30,26 @@ const navConfig: Record<
   { label: string; path: string; icon: React.ElementType }[]
 > = {
   dispatcher: [
-    { label: "船只管理", path: "/dispatcher", icon: Ship },
+    { label: "调度日历", path: "/dispatcher/calendar", icon: LayoutDashboard },
+    { label: "余票矩阵", path: "/dispatcher/seat-matrix", icon: Grid3X3 },
+    { label: "船只管理", path: "/dispatcher/ships", icon: Ship },
     { label: "检修管理", path: "/dispatcher/maintenance", icon: Wrench },
     { label: "班次管理", path: "/dispatcher/schedule", icon: Calendar },
+    { label: "订单详情", path: "/dispatcher/orders", icon: ListChecks },
+    { label: "候补转正", path: "/dispatcher/waiting-list", icon: Clock },
     { label: "停航日历", path: "/dispatcher/stop-days", icon: Wind },
+    { label: "停航处置", path: "/dispatcher/stop-disposal", icon: AlertTriangle },
+    { label: "退款明细", path: "/dispatcher/refunds", icon: CreditCard },
+    { label: "船只检查", path: "/dispatcher/inspection", icon: ShieldCheck },
+    { label: "运营统计", path: "/dispatcher/stats", icon: BarChart3 },
   ],
   tourist: [
     { label: "班次查询", path: "/tourist", icon: Search },
     { label: "我的订单", path: "/tourist/order", icon: FileText },
   ],
   dock: [
-    { label: "登船登记", path: "/dock", icon: UserCheck },
+    { label: "登船核销", path: "/dock/verification", icon: QrCode },
+    { label: "登船登记", path: "/dock/register", icon: UserCheck },
     { label: "登船记录", path: "/dock/records", icon: ClipboardList },
   ],
 };

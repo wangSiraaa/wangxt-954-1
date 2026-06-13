@@ -5,7 +5,7 @@ import { useMaintenanceStore } from "@/store/useMaintenanceStore";
 
 export default function ShipManage() {
   const { ships, addShip, updateShip, deleteShip } = useShipStore();
-  const refreshShipStatus = useMaintenanceStore((s) => s.refreshShipStatus);
+  const { refreshShipStatus } = useMaintenanceStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", capacity: 0 });
@@ -13,7 +13,7 @@ export default function ShipManage() {
 
   useEffect(() => {
     refreshShipStatus();
-  }, [refreshShipStatus]);
+  }, []);
 
   const handleSubmit = () => {
     if (!form.name.trim()) {

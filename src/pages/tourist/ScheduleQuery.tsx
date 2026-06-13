@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Calendar, Ship, Clock, Ticket, Users, AlertTriangle, X, Minus, Plus } from "lucide-react";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useShipStore } from "@/store/useShipStore";
@@ -11,25 +11,10 @@ export default function ScheduleQuery() {
   const [ticketCount, setTicketCount] = useState(1);
   const [touristName, setTouristName] = useState("");
 
-  const allSchedules = useScheduleStore((s) => s.schedules);
+  const schedules = useScheduleStore((s) => s.getByDate(date));
   const ships = useShipStore((s) => s.ships);
-  const stopDays = useStopDayStore((s) => s.stopDays);
+  const isStopDay = useStopDayStore((s) => s.isStopDay(date));
   const addOrder = useOrderStore((s) => s.addOrder);
-
-  const schedules = useMemo(
-    () => allSchedules.filter((s) => s.date === date),
-    [allSchedules, date]
-  );
-
-  const isStopDay = useMemo(
-    () => stopDays.some((d) => d.date === date),
-    [stopDays, date]
-  );
-
-  const stopDayInfo = useMemo(
-    () => stopDays.find((d) => d.date === date),
-    [stopDays, date]
-  );
 
   const selectedSchedule = schedules.find((s) => s.id === modalScheduleId);
   const selectedShip = selectedSchedule
@@ -63,6 +48,10 @@ export default function ScheduleQuery() {
     setTouristName("");
     setModalScheduleId(scheduleId);
   };
+
+  const stopDayInfo = useStopDayStore((s) =>
+    s.stopDays.find((d) => d.date === date)
+  );
 
   return (
     <div className="min-h-screen bg-[#F0F9FF] p-4 md:p-8">
