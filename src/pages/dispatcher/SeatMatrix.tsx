@@ -75,7 +75,7 @@ export default function SeatMatrix() {
   }, [routes]);
 
   const shipMap = useMemo(() => {
-    const map: Record<string, { name: string }> = {};
+    const map: Record<string, { name: string; shipTypeId?: string }> = {};
     ships.forEach((s) => (map[s.id] = s));
     return map;
   }, [ships]);

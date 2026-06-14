@@ -127,7 +127,7 @@ export default function ShipInspection() {
       .filter((i) => i.shipId === ship.id)
       .sort((a, b) => new Date(b.inspectionDate).getTime() - new Date(a.inspectionDate).getTime())[0];
     const activeMaintenance = maintenances.find(
-      (m) => m.shipId === ship.id && m.status === "in_progress"
+      (m) => m.shipId === ship.id && m.status === "in-progress"
     );
     return { shipSchedules, shipOrders, shipType, captain, latestInspection, activeMaintenance };
   };
@@ -155,13 +155,25 @@ export default function ShipInspection() {
     if (!newInspection.shipId) return;
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const nextDate = new Date(today);
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}-${String(nextDate.getDate()).padStart(2, "0")}`;
+    
+    const convertOverallResult = (result: "passed" | "failed" | "pending"): "pass" | "fail" => {
+      if (result === "passed") return "pass";
+      return "fail";
+    };
     
     addInspection(newInspection.shipId, {
       inspectionDate: dateStr,
       inspector: newInspection.inspector,
-      overallResult: newInspection.overallResult,
-      items: newInspection.items,
-      nextInspectionDate: newInspection.nextInspectionDate || dateStr,
+      overallResult: convertOverallResult(newInspection.overallResult),
+      items: newInspection.items.map((item) => ({
+        name: item.name,
+        status: item.result,
+        notes: item.remark,
+      })),
+      nextInspectionDate: nextDateStr,
       remark: newInspection.remark,
     });
     

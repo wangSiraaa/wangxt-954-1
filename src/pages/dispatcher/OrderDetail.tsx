@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
-import { FileText, User, Users, Calendar, Clock, Ship, Ticket, Shield, RefreshCw, QrCode, CreditCard, ArrowLeft, Info, CheckCircle, XCircle, AlertCircle, ChevronRight } from "lucide-react";
+import { FileText, User, Users, Calendar, Clock, Ship, Ticket, Shield, RefreshCw, QrCode, CreditCard, ArrowLeft, Info, CheckCircle, XCircle, AlertCircle, ChevronRight, AlertTriangle, RefreshCcw, ArrowRight } from "lucide-react";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useShipStore } from "@/store/useShipStore";
 import { useBaseStore } from "@/store/useBaseStore";
 import { useBoardingStore } from "@/store/useBoardingStore";
 import { useRefundStore } from "@/store/useRefundStore";
-import type { Order } from "@/types";
+import { useStopDayStore } from "@/store/useStopDayStore";
+import type { Order, OrderDisposalCategory } from "@/types";
 
 function getStatusColor(status: string) {
   const colors: Record<string, string> = {
@@ -43,12 +44,13 @@ function maskPhone(phone: string) {
 }
 
 export default function OrderDetail() {
-  const { orders, getByOrderNo, rescheduleOrder, refundOrder } = useOrderStore();
-  const { schedules, calculateAvailableSeats } = useScheduleStore();
+  const { orders, getByOrderNo, rescheduleOrder, refundOrder, validateTicketPurchase, validateBoarding } = useOrderStore();
+  const { schedules, calculateAvailableSeats, getAvailableSeatsBreakdown } = useScheduleStore();
   const { ships, getShipTypeInfo } = useShipStore();
   const { routes, docks, insurances } = useBaseStore();
   const { boardingRecords, getByOrderId } = useBoardingStore();
   const { refundDetails, getByOrderId: getRefundByOrderId } = useRefundStore();
+  const { classifyOrder, getOrderDisposalInfo, getCategoryLabel, getAvailableActionsLabel } = useStopDayStore();
 
   const [searchOrderNo, setSearchOrderNo] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -523,6 +525,182 @@ export default function OrderDetail() {
             </div>
 
             <div className="space-y-6">
+              {schedule && (() => {
+                const disposal = classifyOrder(selectedOrder, schedule);
+                const disposalInfo = getOrderDisposalInfo(selectedOrder.id, schedule);
+                const seatsBreakdown = getAvailableSeatsBreakdown(schedule.id);
+                const ticketValidation = validateTicketPurchase(schedule.id, 1);
+                const boardingValidation = validateBoarding(schedule.id, selectedOrder.id);
+                const getCategoryColor = (cat: OrderDisposalCategory) => {
+                  const colors = {
+                    reschedulable: "bg-purple-100 text-purple-700",
+                    refundable: "bg-green-100 text-green-700",
+                    "waiting-convertible": "bg-blue-100 text-blue-700",
+                    "boarded-unprocessable": "bg-yellow-100 text-yellow-700",
+                    cancelled: "bg-gray-100 text-gray-700",
+                  };
+                  return colors[cat];
+                };
+
+                return (
+                  <>
+                    <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
+                      <h3 className="font-semibold text-[#0C4A6E] mb-4 flex items-center gap-2">
+                        <Info className="w-5 h-5" />
+                        当前可执行操作
+                      </h3>
+                      
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(disposal.category)}`}>
+                            {getCategoryLabel(disposal.category)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-blue-700 mb-2">
+                          <strong>分类说明：</strong>{disposalInfo?.reason || "系统自动分类"}
+                        </div>
+                        {disposalInfo?.availableActions && (
+                          <div className="text-sm text-blue-700">
+                            <strong>可执行操作：</strong>{getAvailableActionsLabel(disposalInfo.availableActions)}
+                          </div>
+                        )}
+                      </div>
+
+                      {disposalInfo?.requirements && disposalInfo.requirements.length > 0 && (
+                        <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-green-700">
+                              <strong>操作要求：</strong>
+                              <ul className="list-disc list-inside mt-1">
+                                {disposalInfo.requirements.map((req, i) => (
+                                  <li key={i}>{req}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {disposalInfo?.warnings && disposalInfo.warnings.length > 0 && (
+                        <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-orange-700">
+                              <strong>注意事项：</strong>
+                              <ul className="list-disc list-inside mt-1">
+                                {disposalInfo.warnings.map((warn, i) => (
+                                  <li key={i}>{warn}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!ticketValidation.valid && ticketValidation.blockedReason && (
+                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-red-700">
+                              <strong>售票阻断：</strong>
+                              {ticketValidation.errors?.[0] || "该班次暂停售票"}
+                              {ticketValidation.warnings && ticketValidation.warnings.length > 0 && (
+                                <div className="mt-1 text-red-600">
+                                  警告：{ticketValidation.warnings.join("；")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!boardingValidation.canBoard && (
+                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-red-700">
+                              <strong>登船阻断：</strong>
+                              {boardingValidation.requiredChecks.filter(c => !c.passed).map(c => c.message).join("；")}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {seatsBreakdown && (
+                      <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
+                        <h3 className="font-semibold text-[#0C4A6E] mb-4 flex items-center gap-2">
+                          <Ticket className="w-5 h-5" />
+                          余票构成明细
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">船只总容量</span>
+                            <span className="font-medium text-[#0C4A6E]">{seatsBreakdown.totalCapacity} 座</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">已售出票数</span>
+                            <span className="font-medium text-blue-600">{seatsBreakdown.soldSeats}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">候补锁定</span>
+                            <span className="font-medium text-purple-600">{seatsBreakdown.waitingLockedSeats}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">改签锁定</span>
+                            <span className="font-medium text-orange-600">{seatsBreakdown.rescheduledLockedSeats}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">已登船核销</span>
+                            <span className="font-medium text-green-600">{seatsBreakdown.boardedSeats}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64748B]">退票释放</span>
+                            <span className="font-medium text-gray-600">{seatsBreakdown.refundReleasedSeats}</span>
+                          </div>
+                          <div className="pt-2 border-t border-[#94A3B8]/10 flex justify-between items-center">
+                            <span className="font-semibold text-[#0C4A6E]">可用余票</span>
+                            <span className="text-xl font-bold text-[#0C4A6E]">{seatsBreakdown.availableSeats}</span>
+                          </div>
+                          <div className="text-xs text-[#64748B] mt-2">
+                            计算公式：总容量 - 已售 - 候补锁定 - 改签锁定 - 已登船 = {seatsBreakdown.totalCapacity} - {seatsBreakdown.soldSeats} - {seatsBreakdown.waitingLockedSeats} - {seatsBreakdown.rescheduledLockedSeats} - {seatsBreakdown.boardedSeats} = <strong>{seatsBreakdown.availableSeats}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {boardingValidation.requiredChecks.length > 0 && (
+                      <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
+                        <h3 className="font-semibold text-[#0C4A6E] mb-4 flex items-center gap-2">
+                          <Shield className="w-5 h-5" />
+                          登船安全校验
+                        </h3>
+                        <div className="space-y-2">
+                          {boardingValidation.requiredChecks.map((check, i) => (
+                            <div key={i} className={`flex items-start gap-2 p-2 rounded-lg ${check.passed ? "bg-green-50" : "bg-red-50"}`}>
+                              {check.passed ? (
+                                <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1">
+                                <div className={`text-sm font-medium ${check.passed ? "text-green-700" : "text-red-700"}`}>
+                                  {check.name}
+                                </div>
+                                <div className={`text-xs ${check.passed ? "text-green-600" : "text-red-600"}`}>
+                                  {check.message}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
               <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
                 <h3 className="font-semibold text-[#0C4A6E] mb-4 flex items-center gap-2">
                   <QrCode className="w-5 h-5" />

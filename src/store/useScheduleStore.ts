@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Schedule } from "../types";
+import type { Schedule, AvailableSeatsBreakdown } from "../types";
 import { useStopDayStore } from "./useStopDayStore";
 import { useMaintenanceStore } from "./useMaintenanceStore";
 import { useShipStore } from "./useShipStore";
@@ -9,6 +9,7 @@ import { useCrewStore } from "./useCrewStore";
 import { useOrderStore } from "./useOrderStore";
 import { useRefundStore } from "./useRefundStore";
 import { useWaitingListStore } from "./useWaitingListStore";
+import { useBoardingStore } from "./useBoardingStore";
 
 interface ScheduleValidationResult {
   valid: boolean;
@@ -34,13 +35,14 @@ interface ScheduleState {
   getByDateRange: (startDate: string, endDate: string) => Schedule[];
   validateSchedule: (schedule: Omit<Schedule, "id">) => ScheduleValidationResult;
   calculateAvailableSeats: (scheduleId: string) => number;
+  getAvailableSeatsBreakdown: (scheduleId: string) => AvailableSeatsBreakdown;
   getDockCapacityForTime: (dockId: string, date: string, time: string) => number;
   isWithinTideWindow: (date: string, time: string, routeId?: string) => boolean;
   hasCrewAssigned: (scheduleId: string) => boolean;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
-  persist(
+  persist<ScheduleState>(
     (set, get) => ({
       schedules: [],
 
@@ -217,23 +219,69 @@ export const useScheduleStore = create<ScheduleState>()(
         );
       },
 
-      calculateAvailableSeats: (scheduleId) => {
+      getAvailableSeatsBreakdown: (scheduleId) => {
         const schedule = get().schedules.find((s) => s.id === scheduleId);
-        if (!schedule) return 0;
+        if (!schedule) {
+          return {
+            totalCapacity: 0,
+            soldSeats: 0,
+            waitingLockedSeats: 0,
+            rescheduledLockedSeats: 0,
+            boardedSeats: 0,
+            refundReleasedSeats: 0,
+            availableSeats: 0,
+            pendingReservationSeats: 0,
+          };
+        }
 
         const orderStore = useOrderStore.getState();
+        const waitingStore = useWaitingListStore.getState();
+        const boardingStore = useBoardingStore.getState();
+
         const orders = orderStore.getByScheduleId(scheduleId);
+        const waitingLists = waitingStore.getByScheduleId(scheduleId);
+
+        const totalCapacity = schedule.totalSeats;
+
         const soldSeats = orders
-          .filter((o) => o.status !== "refunded" && o.status !== "cancelled")
+          .filter((o) => o.status === "pending" || o.status === "rescheduled")
           .reduce((sum, o) => sum + o.ticketCount, 0);
 
-        const waitingStore = useWaitingListStore.getState();
-        const waitingSeats = waitingStore
-          .getByScheduleId(scheduleId)
+        const waitingLockedSeats = waitingLists
           .filter((w) => w.status === "waiting")
           .reduce((sum, w) => sum + w.ticketCount, 0);
 
-        return Math.max(0, schedule.totalSeats - soldSeats - waitingSeats);
+        const rescheduledLockedSeats = orders
+          .filter((o) => o.rescheduleHistory.length > 0 && o.status === "pending")
+          .reduce((sum, o) => sum + o.ticketCount, 0);
+
+        const boardedSeats = orders
+          .filter((o) => o.status === "boarded" || boardingStore.hasBoarded(o.id))
+          .reduce((sum, o) => sum + o.ticketCount, 0);
+
+        const refundedOrders = orders.filter((o) => o.status === "refunded" || o.status === "cancelled");
+        const refundReleasedSeats = refundedOrders.reduce((sum, o) => sum + o.ticketCount, 0);
+
+        const pendingReservationSeats = 0;
+
+        const allocatedSeats = soldSeats + waitingLockedSeats + boardedSeats;
+        const availableSeats = Math.max(0, totalCapacity - allocatedSeats);
+
+        return {
+          totalCapacity,
+          soldSeats,
+          waitingLockedSeats,
+          rescheduledLockedSeats,
+          boardedSeats,
+          refundReleasedSeats,
+          availableSeats,
+          pendingReservationSeats,
+        };
+      },
+
+      calculateAvailableSeats: (scheduleId) => {
+        const breakdown = get().getAvailableSeatsBreakdown(scheduleId);
+        return breakdown.availableSeats;
       },
 
       getDockCapacityForTime: (dockId, date, time) => {

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Calendar, Clock, Users, RefreshCw, CheckCircle, XCircle, Info, RefreshCcw, CreditCard, Ship as ShipIcon } from "lucide-react";
+import { AlertTriangle, Calendar, Clock, Users, RefreshCw, CheckCircle, XCircle, Info, RefreshCcw, CreditCard, Ship as ShipIcon, Filter, ArrowRight, Shield, Ticket, AlertCircle } from "lucide-react";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useShipStore } from "@/store/useShipStore";
@@ -7,7 +7,7 @@ import { useBaseStore } from "@/store/useBaseStore";
 import { useRefundStore } from "@/store/useRefundStore";
 import { useWaitingListStore } from "@/store/useWaitingListStore";
 import { useStopDayStore } from "@/store/useStopDayStore";
-import type { Schedule, Order } from "@/types";
+import type { Schedule, Order, OrderDisposalCategory, OrderDisposalInfo } from "@/types";
 
 function getScheduleStatusColor(status: string) {
   const colors: Record<string, string> = {
@@ -60,9 +60,12 @@ export default function StopDayDisposal() {
   const { routes, docks } = useBaseStore();
   const { refundDetails, createRefundForOrder } = useRefundStore();
   const { cancelWaitingListBySchedule } = useWaitingListStore();
-  const { stopDays, addStopDay, removeStopDay, getByDate: getStopDayByDate } = useStopDayStore();
+  const { stopDays, addStopDay, removeStopDay, getByDate: getStopDayByDate, classifyOrder, getOrderDisposalInfo, getCategoryLabel, getAvailableActionsLabel, analyzeAffected } = useStopDayStore();
+  const { getAvailableSeatsBreakdown } = useScheduleStore();
+  const { validateTicketPurchase } = useOrderStore();
 
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<OrderDisposalCategory | "all">("all");
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -72,6 +75,12 @@ export default function StopDayDisposal() {
   const [newStopDate, setNewStopDate] = useState("");
   const [newStopReason, setNewStopReason] = useState("");
   const [newStopRouteId, setNewStopRouteId] = useState("all");
+  const [newStopType, setNewStopType] = useState<"weather" | "tide" | "terminal-limit">("weather");
+  const [newStopSeverity, setNewStopSeverity] = useState<"warning" | "severe" | "critical">("warning");
+  const [newStopAffectedDocks, setNewStopAffectedDocks] = useState<string[]>([]);
+  const [newWindForce, setNewWindForce] = useState<number>(6);
+  const [newTideLevel, setNewTideLevel] = useState<number>(0.5);
+  const [newTerminalLimit, setNewTerminalLimit] = useState<number>(100);
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -86,14 +95,77 @@ export default function StopDayDisposal() {
   }, [schedules]);
 
   const affectedOrders = useMemo(() => {
+    let ordersList: Order[] = [];
     if (selectedScheduleId === "all") {
-      return orders.filter((o) => {
+      ordersList = orders.filter((o) => {
         const schedule = schedules.find((s) => s.id === o.scheduleId);
         return schedule?.status === "cancelled" && o.status !== "refunded" && o.status !== "cancelled";
       });
+    } else {
+      ordersList = orders.filter((o) => o.scheduleId === selectedScheduleId && o.status !== "refunded" && o.status !== "cancelled");
     }
-    return orders.filter((o) => o.scheduleId === selectedScheduleId && o.status !== "refunded" && o.status !== "cancelled");
-  }, [orders, schedules, selectedScheduleId]);
+    
+    if (selectedCategory === "all") {
+      return ordersList;
+    }
+    
+    return ordersList.filter(o => {
+      const schedule = schedules.find((s) => s.id === o.scheduleId);
+      const disposal = classifyOrder(o, schedule);
+      return disposal.category === selectedCategory;
+    });
+  }, [orders, schedules, selectedScheduleId, selectedCategory, classifyOrder]);
+
+  const categoryStats = useMemo(() => {
+    const baseOrders = selectedScheduleId === "all"
+      ? orders.filter((o) => {
+          const schedule = schedules.find((s) => s.id === o.scheduleId);
+          return schedule?.status === "cancelled" && o.status !== "refunded" && o.status !== "cancelled";
+        })
+      : orders.filter((o) => o.scheduleId === selectedScheduleId && o.status !== "refunded" && o.status !== "cancelled");
+
+    const stats: Record<OrderDisposalCategory, number> = {
+      reschedulable: 0,
+      refundable: 0,
+      "waiting-convertible": 0,
+      "boarded-unprocessable": 0,
+      cancelled: 0,
+    };
+
+    baseOrders.forEach(o => {
+      const schedule = schedules.find((s) => s.id === o.scheduleId);
+      const disposal = classifyOrder(o, schedule);
+      stats[disposal.category]++;
+    });
+
+    return stats;
+  }, [orders, schedules, selectedScheduleId, classifyOrder]);
+
+  const getCategoryColor = (category: OrderDisposalCategory) => {
+    const colors: Record<OrderDisposalCategory, string> = {
+      reschedulable: "bg-purple-100 text-purple-700",
+      refundable: "bg-green-100 text-green-700",
+      "waiting-convertible": "bg-blue-100 text-blue-700",
+      "boarded-unprocessable": "bg-yellow-100 text-yellow-700",
+      cancelled: "bg-gray-100 text-gray-700",
+    };
+    return colors[category];
+  };
+
+  const getCategoryIcon = (category: OrderDisposalCategory) => {
+    switch (category) {
+      case "reschedulable":
+        return <RefreshCcw className="w-5 h-5" />;
+      case "refundable":
+        return <CreditCard className="w-5 h-5" />;
+      case "waiting-convertible":
+        return <Ticket className="w-5 h-5" />;
+      case "boarded-unprocessable":
+        return <AlertTriangle className="w-5 h-5" />;
+      default:
+        return <XCircle className="w-5 h-5" />;
+    }
+  };
 
   const cancelledSchedules = useMemo(() => {
     return schedules.filter((s) => s.status === "cancelled");
@@ -140,16 +212,74 @@ export default function StopDayDisposal() {
       setResult({ success: false, message: "该日期已设置过停航" });
       return;
     }
-    addStopDay({
+
+    const stopDayData: any = {
       date: newStopDate,
       routeId: newStopRouteId,
       reason: newStopReason || "天气原因",
       operator: "调度员",
-    });
+      type: newStopType,
+      severity: newStopSeverity,
+    };
+
+    if (newStopAffectedDocks.length > 0) {
+      stopDayData.affectedDocks = newStopAffectedDocks;
+    }
+
+    if (newStopType === "weather") {
+      stopDayData.windForce = newWindForce;
+      if (!newStopReason) {
+        stopDayData.reason = `风力${newWindForce}级大风预警`;
+      }
+    } else if (newStopType === "tide") {
+      stopDayData.tideLevel = newTideLevel;
+      if (!newStopReason) {
+        stopDayData.reason = `潮汐水位异常，最低${newTideLevel}米`;
+      }
+    } else if (newStopType === "terminal-limit") {
+      stopDayData.terminalLimitCount = newTerminalLimit;
+      if (!newStopReason) {
+        stopDayData.reason = `码头限流，每小时限流${newTerminalLimit}人`;
+      }
+    }
+
+    const stopDay = addStopDay(stopDayData);
+    
+    if (stopDay) {
+      const analysis = analyzeAffected(newStopDate, newStopRouteId === "all" ? undefined : [newStopRouteId]);
+      setResult({ 
+        success: true, 
+        message: `停航日期设置成功！已识别 ${analysis.schedules.length} 个受影响班次，${analysis.orders.length} 个订单待处置` 
+      });
+    } else {
+      setResult({ success: true, message: "停航日期设置成功" });
+    }
+    
     setNewStopDate("");
     setNewStopReason("");
     setNewStopRouteId("all");
-    setResult({ success: true, message: "停航日期设置成功" });
+    setNewStopType("weather");
+    setNewStopSeverity("warning");
+    setNewStopAffectedDocks([]);
+    setNewWindForce(6);
+    setNewTideLevel(0.5);
+    setNewTerminalLimit(100);
+  };
+
+  const toggleAffectedDock = (dockId: string) => {
+    setNewStopAffectedDocks(prev => 
+      prev.includes(dockId) 
+        ? prev.filter(id => id !== dockId)
+        : [...prev, dockId]
+    );
+  };
+
+  const handleConvertWaiting = (orderId: string) => {
+    alert("候补转正功能：请跳转到候补管理页面处理");
+  };
+
+  const handleSpecialHandling = (orderId: string) => {
+    alert("特殊处理：已登船订单需联系客服进行人工处置");
   };
 
   const handleRemoveStopDay = (date: string) => {
@@ -185,7 +315,7 @@ export default function StopDayDisposal() {
     let successCount = 0;
     let failCount = 0;
     affectedOrders.forEach((order) => {
-      if (order.status === "paid") {
+      if (order.status === "pending" || order.status === "boarded") {
         try {
           createRefundForOrder(order.id, 0, "停航全额退款", "系统自动");
           successCount++;
@@ -209,7 +339,7 @@ export default function StopDayDisposal() {
     try {
       let refunded = 0;
       affectedOrders.forEach((order) => {
-        if (order.status === "paid") {
+        if (order.status === "pending" || order.status === "boarded") {
           createRefundForOrder(order.id, 0, "停航全额退款", "系统自动");
           refunded++;
         }
@@ -279,6 +409,98 @@ export default function StopDayDisposal() {
           <div className="text-2xl font-bold text-purple-600">{stats.pendingReschedule}</div>
         </div>
       </div>
+
+      {selectedTab === "disposal" && stats.affectedOrders > 0 && (
+        <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20 mb-6">
+          <h3 className="text-lg font-semibold text-[#0C4A6E] mb-4 flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            订单分类统计
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button
+              onClick={() => setSelectedCategory(selectedCategory === "reschedulable" ? "all" : "reschedulable")}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                selectedCategory === "reschedulable"
+                  ? "border-purple-500 bg-purple-50"
+                  : "border-[#94A3B8]/20 hover:border-purple-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedCategory === "reschedulable" ? "bg-purple-200 text-purple-700" : "bg-purple-100 text-purple-600"}`}>
+                  <RefreshCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-purple-600">{categoryStats.reschedulable}</div>
+                  <div className="text-xs text-[#64748B]">可改签</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setSelectedCategory(selectedCategory === "refundable" ? "all" : "refundable")}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                selectedCategory === "refundable"
+                  ? "border-green-500 bg-green-50"
+                  : "border-[#94A3B8]/20 hover:border-green-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedCategory === "refundable" ? "bg-green-200 text-green-700" : "bg-green-100 text-green-600"}`}>
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{categoryStats.refundable}</div>
+                  <div className="text-xs text-[#64748B]">可退款</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setSelectedCategory(selectedCategory === "waiting-convertible" ? "all" : "waiting-convertible")}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                selectedCategory === "waiting-convertible"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-[#94A3B8]/20 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedCategory === "waiting-convertible" ? "bg-blue-200 text-blue-700" : "bg-blue-100 text-blue-600"}`}>
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">{categoryStats["waiting-convertible"]}</div>
+                  <div className="text-xs text-[#64748B]">候补转正</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setSelectedCategory(selectedCategory === "boarded-unprocessable" ? "all" : "boarded-unprocessable")}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                selectedCategory === "boarded-unprocessable"
+                  ? "border-yellow-500 bg-yellow-50"
+                  : "border-[#94A3B8]/20 hover:border-yellow-300"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedCategory === "boarded-unprocessable" ? "bg-yellow-200 text-yellow-700" : "bg-yellow-100 text-yellow-600"}`}>
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-600">{categoryStats["boarded-unprocessable"]}</div>
+                  <div className="text-xs text-[#64748B]">已登船待处理</div>
+                </div>
+              </div>
+            </button>
+          </div>
+          {selectedCategory !== "all" && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+              <Info className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-sm text-blue-700">
+                当前筛选：{getCategoryLabel(selectedCategory as OrderDisposalCategory)}，共 {categoryStats[selectedCategory as OrderDisposalCategory]} 个订单
+                <button onClick={() => setSelectedCategory("all")} className="ml-2 underline hover:text-blue-800">清除筛选</button>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {result && (
         <div
@@ -461,25 +683,46 @@ export default function StopDayDisposal() {
               <div className="space-y-3">
                 {affectedOrders.map((order) => {
                   const schedule = schedules.find((s) => s.id === order.scheduleId);
+                  const disposal = classifyOrder(order, schedule);
+                  const disposalInfo = getOrderDisposalInfo(order.id, schedule);
+                  const seatsBreakdown = schedule ? getAvailableSeatsBreakdown(schedule.id) : null;
+                  const ticketValidation = schedule ? validateTicketPurchase(schedule.id, 1) : null;
+
                   return (
-                    <div key={order.id} className="p-4 bg-[#FFF7ED] rounded-xl border border-[#FBBF24]/30">
+                    <div key={order.id} className={`p-4 rounded-xl border ${
+                      disposal.category === "boarded-unprocessable" 
+                        ? "bg-yellow-50 border-yellow-200" 
+                        : disposal.category === "waiting-convertible"
+                        ? "bg-blue-50 border-blue-200"
+                        : "bg-[#FFF7ED] border-[#FBBF24]/30"
+                    }`}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-[#F97316]/10 flex items-center justify-center">
-                            <Users className="w-6 h-6 text-[#F97316]" />
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            disposal.category === "reschedulable" ? "bg-purple-100" :
+                            disposal.category === "refundable" ? "bg-green-100" :
+                            disposal.category === "waiting-convertible" ? "bg-blue-100" :
+                            "bg-yellow-100"
+                          }`}>
+                            {getCategoryIcon(disposal.category)}
                           </div>
                           <div>
                             <div className="font-medium text-[#0C4A6E]">{order.orderNo}</div>
                             <div className="text-sm text-[#64748B]">{order.touristName} · {order.ticketCount}人</div>
                           </div>
                         </div>
-                        <span className={`text-xs px-3 py-1 rounded-full ${getOrderStatusColor(order.status)}`}>
-                          {getOrderStatusLabel(order.status)}
-                        </span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`text-xs px-3 py-1 rounded-full ${getOrderStatusColor(order.status)}`}>
+                            {getOrderStatusLabel(order.status)}
+                          </span>
+                          <span className={`text-xs px-3 py-1 rounded-full ${getCategoryColor(disposal.category)}`}>
+                            {getCategoryLabel(disposal.category)}
+                          </span>
+                        </div>
                       </div>
 
                       {schedule && (
-                        <div className="flex items-center gap-6 mb-3 text-sm text-[#64748B]">
+                        <div className="flex items-center gap-6 mb-3 text-sm text-[#64748B] flex-wrap">
                         <div className="flex items-center gap-2">
                           <ShipIcon className="w-4 h-4" />
                           <span>{getShipName(schedule.shipId)}</span>
@@ -492,44 +735,149 @@ export default function StopDayDisposal() {
                           <Clock className="w-4 h-4" />
                           <span>{schedule.departureTime}</span>
                         </div>
+                        {seatsBreakdown && (
+                          <div className="flex items-center gap-2">
+                            <Ticket className="w-4 h-4" />
+                            <span>余票 {seatsBreakdown.availableSeats}/{seatsBreakdown.totalCapacity}</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    <div className="p-3 bg-white rounded-lg mb-3">
-                      <div className="flex items-center gap-2">
-                        <Info className="w-4 h-4 text-[#F97316]" />
+                    <div className="p-3 bg-white rounded-lg mb-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-[#F97316] shrink-0 mt-0.5" />
                         <span className="text-sm text-[#9A3412]">
                           停航原因：{schedule?.cancellationReason || "天气原因"}
                         </span>
                       </div>
+                      <div className="flex items-start gap-2">
+                        <ArrowRight className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <span className="text-sm text-[#1E40AF]">
+                          <strong>分类说明：</strong>{disposalInfo?.reason || "系统自动分类"}
+                        </span>
+                      </div>
+                      {disposalInfo?.requirements && disposalInfo.requirements.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                          <div className="text-sm text-green-700">
+                            <strong>操作要求：</strong>
+                            <ul className="list-disc list-inside mt-1">
+                              {disposalInfo.requirements.map((req, i) => (
+                                <li key={i}>{req}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      {disposalInfo?.warnings && disposalInfo.warnings.length > 0 && (
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+                          <div className="text-sm text-orange-700">
+                            <strong>注意事项：</strong>
+                            <ul className="list-disc list-inside mt-1">
+                              {disposalInfo.warnings.map((warn, i) => (
+                                <li key={i}>{warn}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      {seatsBreakdown && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="text-xs text-[#64748B] mb-2">余票构成明细</div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">总容量：</span>
+                              <span className="font-medium text-[#0C4A6E]">{seatsBreakdown.totalCapacity}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">已售票：</span>
+                              <span className="font-medium text-blue-600">{seatsBreakdown.soldSeats}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">候补锁定：</span>
+                              <span className="font-medium text-purple-600">{seatsBreakdown.waitingLockedSeats}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">已登船：</span>
+                              <span className="font-medium text-green-600">{seatsBreakdown.boardedSeats}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">退票释放：</span>
+                              <span className="font-medium text-gray-600">{seatsBreakdown.refundReleasedSeats}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-[#64748B]">改签锁定：</span>
+                              <span className="font-medium text-orange-600">{seatsBreakdown.rescheduledLockedSeats}</span>
+                            </div>
+                            <div className="flex justify-between col-span-2">
+                              <span className="text-[#64748B] font-medium">可用余票：</span>
+                              <span className="font-bold text-[#0C4A6E]">{seatsBreakdown.availableSeats}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {ticketValidation && !ticketValidation.valid && ticketValidation.blockedReason && (
+                        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-red-700">
+                              <strong>售票阻断：</strong>{ticketValidation.errors?.[0] || "该班次暂停售票"}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {order.status === "paid" && (
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleReschedule(order.id)}
-                          className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <RefreshCcw className="w-4 h-4" />
-                          改签
-                        </button>
-                        <button
-                          onClick={() => handleRefund(order.id)}
-                          className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          全额退款
-                        </button>
-                      </div>
-                    )}
-
-                    {order.status === "boarded" && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                          <span className="text-sm text-yellow-700">
-                            该订单已登船，需特殊处理
-                          </span>
+                    {disposalInfo?.availableActions && (
+                      <div className="mb-3">
+                        <div className="text-xs text-[#64748B] mb-2">可执行操作：{getAvailableActionsLabel(disposalInfo.availableActions)}</div>
+                        <div className={`flex gap-3 ${
+                          disposal.category === "boarded-unprocessable" ? "flex-col" : ""
+                        }`}>
+                          {disposalInfo.availableActions.includes("reschedule") && (
+                            <button
+                              onClick={() => handleReschedule(order.id)}
+                              className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <RefreshCcw className="w-4 h-4" />
+                              改签
+                            </button>
+                          )}
+                          {disposalInfo.availableActions.includes("refund") && (
+                            <button
+                              onClick={() => handleRefund(order.id)}
+                              className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              全额退款
+                            </button>
+                          )}
+                          {disposalInfo.availableActions.includes("convert-waiting") && (
+                            <button
+                              onClick={() => handleConvertWaiting(order.id)}
+                              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Ticket className="w-4 h-4" />
+                              候补转正
+                            </button>
+                          )}
+                          {disposalInfo.availableActions.includes("special-handling") && (
+                            <button
+                              onClick={() => handleSpecialHandling(order.id)}
+                              className="flex-1 py-2 bg-yellow-600 text-white rounded-lg text-sm font-medium hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Shield className="w-4 h-4" />
+                              特殊处理
+                            </button>
+                          )}
+                          {disposalInfo.availableActions.includes("view-only") && (
+                            <div className="flex-1 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                              <Info className="w-4 h-4" />
+                              仅查看
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -546,7 +894,7 @@ export default function StopDayDisposal() {
         <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
           <h2 className="text-lg font-semibold text-[#0C4A6E] mb-6">停航日历设置</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-[#F8FAFC] rounded-xl mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-[#F8FAFC] rounded-xl mb-6">
             <div>
               <label className="block text-sm text-[#64748B] mb-2">停航日期</label>
               <input
@@ -556,6 +904,30 @@ export default function StopDayDisposal() {
                 min={todayStr}
                 className="w-full px-4 py-2 border border-[#94A3B8]/30 rounded-lg"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-[#64748B] mb-2">停航类型</label>
+              <select
+                value={newStopType}
+                onChange={(e) => setNewStopType(e.target.value as "weather" | "tide" | "terminal-limit")}
+                className="w-full px-4 py-2 border border-[#94A3B8]/30 rounded-lg"
+              >
+                <option value="weather">🌬️ 天气原因（大风、暴雨等）</option>
+                <option value="tide">🌊 潮汐异常</option>
+                <option value="terminal-limit">🚧 码头限流</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-[#64748B] mb-2">严重程度</label>
+              <select
+                value={newStopSeverity}
+                onChange={(e) => setNewStopSeverity(e.target.value as "warning" | "severe" | "critical")}
+                className="w-full px-4 py-2 border border-[#94A3B8]/30 rounded-lg"
+              >
+                <option value="warning">⚠️ 预警（部分航线受影响）</option>
+                <option value="severe">🟠 严重（主要航线停航）</option>
+                <option value="critical">🔴 紧急（全部停航）</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm text-[#64748B] mb-2">航线范围</label>
@@ -578,7 +950,7 @@ export default function StopDayDisposal() {
                 type="text"
                 value={newStopReason}
                 onChange={(e) => setNewStopReason(e.target.value)}
-                placeholder="如：大风天气"
+                placeholder="根据类型自动生成，可手动修改"
                 className="w-full px-4 py-2 border border-[#94A3B8]/30 rounded-lg"
               />
             </div>
@@ -591,6 +963,200 @@ export default function StopDayDisposal() {
               </button>
             </div>
           </div>
+
+          {newStopType === "weather" && (
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+              <h3 className="text-sm font-semibold text-[#0C4A6E] mb-3 flex items-center gap-2">
+                🌬️ 天气参数设置
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-[#64748B] mb-2">
+                    风力等级
+                    <span className="ml-2 text-lg font-bold text-orange-600">{newWindForce} 级</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="12"
+                    value={newWindForce}
+                    onChange={(e) => setNewWindForce(Number(e.target.value))}
+                    className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-[#64748B] mt-1">
+                    <span>0级</span>
+                    <span>6级</span>
+                    <span>12级</span>
+                  </div>
+                  <div className="mt-2 text-xs text-orange-700">
+                    {newWindForce < 3 && "微风：正常通航"}
+                    {newWindForce >= 3 && newWindForce < 6 && "和风：注意瞭望"}
+                    {newWindForce >= 6 && newWindForce < 8 && "强风：建议停航"}
+                    {newWindForce >= 8 && "大风：强制停航"}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="text-sm text-[#64748B]">
+                    <span className="font-medium">天气预警等级：</span>
+                    <select
+                      value={newStopSeverity}
+                      onChange={(e) => setNewStopSeverity(e.target.value as "warning" | "severe" | "critical")}
+                      className="ml-2 px-3 py-1 border border-orange-300 rounded"
+                    >
+                      <option value="warning">蓝色预警</option>
+                      <option value="severe">黄色/橙色预警</option>
+                      <option value="critical">红色预警</option>
+                    </select>
+                  </div>
+                  <div className="text-sm text-orange-700 bg-orange-100 p-2 rounded">
+                    <strong>系统判定：</strong>
+                    {newWindForce >= 8 ? "风力过大，所有航线强制停航" :
+                     newWindForce >= 6 ? "风力较大，建议取消露天航线" :
+                     "风力正常，可选择性停航"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {newStopType === "tide" && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <h3 className="text-sm font-semibold text-[#0C4A6E] mb-3 flex items-center gap-2">
+                🌊 潮汐参数设置
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-[#64748B] mb-2">
+                    最低通航水位
+                    <span className="ml-2 text-lg font-bold text-blue-600">{newTideLevel.toFixed(1)} 米</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="3"
+                    step="0.1"
+                    value={newTideLevel}
+                    onChange={(e) => setNewTideLevel(Number(e.target.value))}
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-[#64748B] mt-1">
+                    <span>0米</span>
+                    <span>1.5米</span>
+                    <span>3米</span>
+                  </div>
+                  <div className="mt-2 text-xs text-blue-700">
+                    {newTideLevel < 0.5 && "水位极低：所有船只无法通航"}
+                    {newTideLevel >= 0.5 && newTideLevel < 1.0 && "水位较低：小型船只可通航"}
+                    {newTideLevel >= 1.0 && newTideLevel < 1.5 && "水位适中：大部分船只可通航"}
+                    {newTideLevel >= 1.5 && "水位充足：所有船只可通航"}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="text-sm text-[#64748B]">
+                    <span className="font-medium">异常类型：</span>
+                    <select
+                      value={newStopSeverity}
+                      onChange={(e) => setNewStopSeverity(e.target.value as "warning" | "severe" | "critical")}
+                      className="ml-2 px-3 py-1 border border-blue-300 rounded"
+                    >
+                      <option value="warning">低潮预警</option>
+                      <option value="severe">严重低潮</option>
+                      <option value="critical">极端低潮/风暴潮</option>
+                    </select>
+                  </div>
+                  <div className="text-sm text-blue-700 bg-blue-100 p-2 rounded">
+                    <strong>系统判定：</strong>
+                    {newTideLevel < 0.5 ? "水位不足安全深度，所有航线停航" :
+                     newTideLevel < 1.0 ? "水位偏低，吃水深的船只停航" :
+                     "水位正常，可选择性停航"}
+                  </div>
+                  <div className="text-xs text-[#64748B]">
+                    船只吃水参考：快艇0.3米 | 游船0.6米 | 大型客船1.0米
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {newStopType === "terminal-limit" && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <h3 className="text-sm font-semibold text-[#0C4A6E] mb-3 flex items-center gap-2">
+                🚧 码头吞吐管控设置
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm text-[#64748B] mb-2">
+                    每小时限流人数
+                    <span className="ml-2 text-lg font-bold text-yellow-600">{newTerminalLimit} 人</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="500"
+                    step="10"
+                    value={newTerminalLimit}
+                    onChange={(e) => setNewTerminalLimit(Number(e.target.value))}
+                    className="w-full h-2 bg-yellow-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-[#64748B] mt-1">
+                    <span>10人</span>
+                    <span>250人</span>
+                    <span>500人</span>
+                  </div>
+                  <div className="mt-2 text-xs text-yellow-700">
+                    {newTerminalLimit < 50 && "严格限流：仅开放VIP通道，所有班次限流"}
+                    {newTerminalLimit >= 50 && newTerminalLimit < 150 && "中度限流：部分时段暂停售票"}
+                    {newTerminalLimit >= 150 && newTerminalLimit < 300 && "轻度限流：建议错峰出行"}
+                    {newTerminalLimit >= 300 && "正常吞吐：无特殊限制"}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="text-sm text-[#64748B]">
+                    <span className="font-medium">管控等级：</span>
+                    <select
+                      value={newStopSeverity}
+                      onChange={(e) => setNewStopSeverity(e.target.value as "warning" | "severe" | "critical")}
+                      className="ml-2 px-3 py-1 border border-yellow-300 rounded"
+                    >
+                      <option value="warning">人流预警</option>
+                      <option value="severe">部分限流</option>
+                      <option value="critical">全面管控</option>
+                    </select>
+                  </div>
+                  <div className="text-sm text-yellow-700 bg-yellow-100 p-2 rounded">
+                    <strong>系统判定：</strong>
+                    {newTerminalLimit < 50 ? "严格管控，所有班次减半售票" :
+                     newTerminalLimit < 150 ? "中度管控，热门航线限流" :
+                     "轻度管控，按需调整班次"}
+                  </div>
+                  <div className="text-xs text-[#64748B]">
+                    码头容量参考：{docks.map(d => `${d.name}${d.capacity}人`).join(" | ")}
+                  </div>
+                </div>
+              </div>
+              <label className="block text-sm font-medium text-[#0C4A6E] mb-2">选择受影响的码头（可多选）</label>
+              <div className="flex flex-wrap gap-3">
+                {docks.map((dock) => (
+                  <label
+                    key={dock.id}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      newStopAffectedDocks.includes(dock.id)
+                        ? "border-yellow-500 bg-yellow-100 text-yellow-700"
+                        : "border-[#94A3B8]/30 bg-white hover:border-yellow-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newStopAffectedDocks.includes(dock.id)}
+                      onChange={() => toggleAffectedDock(dock.id)}
+                      className="w-4 h-4 text-yellow-600"
+                    />
+                    <span className="text-sm">{dock.name} (容量{dock.capacity}人)</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {activeStopDays.length === 0 ? (
             <div className="text-center py-10 text-[#94A3B8]">

@@ -38,7 +38,7 @@ interface BoardingState {
 }
 
 export const useBoardingStore = create<BoardingState>()(
-  persist(
+  persist<BoardingState>(
     (set, get) => ({
       boardingRecords: [],
 
@@ -67,6 +67,16 @@ export const useBoardingStore = create<BoardingState>()(
           return { success: false, message: "该订单已登船" };
         }
 
+        const boardingValidation = orderStore.validateBoarding(order.scheduleId, order.id);
+        if (!boardingValidation.canBoard) {
+          const failedChecks = boardingValidation.requiredChecks.filter((c) => !c.passed);
+          const errorMessages = failedChecks.map((c) => c.message).join("；");
+          return {
+            success: false,
+            message: `登船校验未通过：${errorMessages}`,
+          };
+        }
+
         try {
           orderStore.markAsBoarded(order.id, verifiedBy);
           return {
@@ -91,14 +101,14 @@ export const useBoardingStore = create<BoardingState>()(
           return { success: false, message: "订单不存在" };
         }
 
-        if (order.status === "boarded") {
-          return { success: false, message: "该订单已登船" };
-        }
-        if (order.status === "refunded") {
-          return { success: false, message: "该订单已退票" };
-        }
-        if (order.status === "cancelled") {
-          return { success: false, message: "该订单已取消" };
+        const boardingValidation = orderStore.validateBoarding(order.scheduleId, orderId, passengerIds);
+        if (!boardingValidation.canBoard) {
+          const failedChecks = boardingValidation.requiredChecks.filter((c) => !c.passed);
+          const errorMessages = failedChecks.map((c) => c.message).join("；");
+          return {
+            success: false,
+            message: `登船校验未通过：${errorMessages}`,
+          };
         }
 
         const boardingPassengers = passengerIds || order.passengerIds;

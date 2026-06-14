@@ -86,8 +86,11 @@ export interface Maintenance {
   type?: "routine" | "repair" | "inspection";
   inspector?: string;
   notes?: string;
-  status?: string;
+  status?: "scheduled" | "in-progress" | "delayed" | "completed";
   plannedEndDate?: string;
+  actualEndDate?: string;
+  delayReason?: string;
+  delayDays?: number;
 }
 
 export interface Schedule {
@@ -111,10 +114,99 @@ export interface StopDay {
   date: string;
   routeId?: string;
   reason: string;
-  type?: "weather" | "tide" | "emergency" | "scheduled";
+  type?: "weather" | "tide" | "emergency" | "scheduled" | "terminal-limit";
   operator?: string;
   createdAt?: string;
   affectedRoutes?: string[];
+  affectedDocks?: string[];
+  severity?: "warning" | "severe" | "critical";
+  windForce?: number;
+  tideLevel?: number;
+  terminalLimitCount?: number;
+  affectedSchedules?: string[];
+}
+
+export type OrderDisposalCategory =
+  | "reschedulable"
+  | "refundable"
+  | "waiting-convertible"
+  | "boarded-unprocessable"
+  | "cancelled";
+
+export interface OrderDisposalInfo {
+  orderId: string;
+  category: OrderDisposalCategory;
+  categoryLabel: string;
+  availableActions: OrderAction[];
+  reason: string;
+  requirements?: string[];
+  warnings?: string[];
+}
+
+export type OrderAction =
+  | "reschedule"
+  | "refund"
+  | "convert-waiting"
+  | "split-group"
+  | "special-handling"
+  | "view-only";
+
+export interface TicketValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  availableSeats: number;
+  blockedReason?: BlockReason;
+}
+
+export type BlockReason =
+  | "group-split-not-allowed"
+  | "insufficient-life-jackets"
+  | "crew-qualification-mismatch"
+  | "maintenance-delay"
+  | "terminal-capacity-exceeded"
+  | "weather-condition"
+  | "tide-abnormal"
+  | "schedule-cancelled"
+  | "inspection-expired";
+
+export interface AvailableSeatsBreakdown {
+  totalCapacity: number;
+  soldSeats: number;
+  waitingLockedSeats: number;
+  rescheduledLockedSeats: number;
+  boardedSeats: number;
+  refundReleasedSeats: number;
+  availableSeats: number;
+  pendingReservationSeats: number;
+}
+
+export interface BoardingValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  canBoard: boolean;
+  blockReason?: BlockReason;
+  requiredChecks: {
+    name: string;
+    passed: boolean;
+    message: string;
+  }[];
+}
+
+export interface ShipSafetyConfig {
+  shipId: string;
+  adultLifeJackets: number;
+  childLifeJackets: number;
+  requiredCrewLicenses: string[];
+  lastSafetyCheckDate: string;
+}
+
+export interface TerminalCapacityConfig {
+  dockId: string;
+  maxPassengersPerHour: number;
+  currentPassengersThisHour: number;
+  nextAvailableSlot: string;
 }
 
 export interface Passenger {

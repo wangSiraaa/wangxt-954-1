@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { QrCode, User, Calendar, Clock, Ship as ShipIcon, CheckCircle, XCircle, Search, Scan, Ticket } from "lucide-react";
+import { QrCode, User, Calendar, Clock, Ship as ShipIcon, CheckCircle, XCircle, Search, Scan, Ticket, AlertTriangle, Info, Shield, AlertCircle } from "lucide-react";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useShipStore } from "@/store/useShipStore";
 import { useBaseStore } from "@/store/useBaseStore";
 import { useBoardingStore } from "@/store/useBoardingStore";
-import type { Order } from "@/types";
+import { useStopDayStore } from "@/store/useStopDayStore";
+import type { Order, OrderDisposalCategory } from "@/types";
 
 function maskIdCard(idCard: string) {
   if (!idCard || idCard.length < 8) return idCard;
@@ -37,11 +38,12 @@ function getStatusLabel(status: string) {
 }
 
 export default function BoardingVerification() {
-  const { orders, getByOrderNo, verifyQRCode } = useOrderStore();
-  const { schedules } = useScheduleStore();
+  const { orders, getByOrderNo, verifyQRCode, validateBoarding, validateTicketPurchase } = useOrderStore();
+  const { schedules, getAvailableSeatsBreakdown } = useScheduleStore();
   const { ships } = useShipStore();
   const { routes, docks } = useBaseStore();
   const { verifyAndBoard, manualBoard, hasBoarded, getBoardingStats } = useBoardingStore();
+  const { classifyOrder, getOrderDisposalInfo, getCategoryLabel } = useStopDayStore();
 
   const [searchInput, setSearchInput] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -447,7 +449,7 @@ export default function BoardingVerification() {
             )}
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20">
+          <div className="bg-white rounded-xl p-6 border border-[#94A3B8]/20 max-h-[80vh] overflow-y-auto">
             {selectedOrder ? (
               <div>
                 <div className="flex items-center justify-between mb-6">
@@ -486,6 +488,151 @@ export default function BoardingVerification() {
                     </div>
                   )}
                 </div>
+
+                {schedule && (() => {
+                  const boardingValidation = validateBoarding(schedule.id, selectedOrder.id, selectedPassengers);
+                  const disposal = classifyOrder(selectedOrder, schedule);
+                  const disposalInfo = getOrderDisposalInfo(selectedOrder.id, schedule);
+                  const seatsBreakdown = getAvailableSeatsBreakdown(schedule.id);
+                  const ticketValidation = validateTicketPurchase(schedule.id, 1);
+                  
+                  const getCategoryColor = (cat: OrderDisposalCategory) => {
+                    const colors = {
+                      reschedulable: "bg-purple-100 text-purple-700",
+                      refundable: "bg-green-100 text-green-700",
+                      "waiting-convertible": "bg-blue-100 text-blue-700",
+                      "boarded-unprocessable": "bg-yellow-100 text-yellow-700",
+                      cancelled: "bg-gray-100 text-gray-700",
+                    };
+                    return colors[cat];
+                  };
+
+                  return (
+                    <>
+                      {!isOrderBoarded && (
+                      <div className="mb-6">
+                        <h3 className="font-medium text-[#0C4A6E] mb-3 flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          登船安全校验 ({boardingValidation.canBoard ? "全部通过" : "存在问题"}
+                        </h3>
+                        {boardingValidation.requiredChecks.length > 0 ? (
+                          <div className="space-y-2">
+                            {boardingValidation.requiredChecks.map((check, i) => (
+                              <div key={i} className={`flex items-start gap-2 p-3 rounded-lg ${check.passed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+                                {check.passed ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                )}
+                                <div className="flex-1">
+                                  <div className={`text-sm font-medium ${check.passed ? "text-green-700" : "text-red-700"}`}>
+                                    {check.name}
+                                  </div>
+                                  <div className={`text-xs ${check.passed ? "text-green-600" : "text-red-600"}`}>
+                                    {check.message}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                            暂无校验项
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!isOrderBoarded && !boardingValidation.canBoard && (
+                      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <XCircle className="w-5 h-5 text-red-600 shrink-0" />
+                          <div>
+                            <div className="font-medium text-red-700 mb-1">登船被阻断</div>
+                            <div className="text-sm text-red-600">
+                              {boardingValidation.requiredChecks.filter(c => !c.passed).map(c => c.message).join("；")}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!ticketValidation.valid && ticketValidation.blockedReason && (
+                      <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0" />
+                          <div>
+                            <div className="font-medium text-orange-700 mb-1">售票状态异常</div>
+                            <div className="text-sm text-orange-600">
+                              {ticketValidation.errors?.[0] || "该班次暂停售票"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {seatsBreakdown && (
+                      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Ticket className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-blue-700">余票构成</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-blue-600">总容量</span>
+                            <span className="font-medium text-blue-800">{seatsBreakdown.totalCapacity}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-600">已售票</span>
+                            <span className="font-medium text-blue-800">{seatsBreakdown.soldSeats}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-600">已登船</span>
+                            <span className="font-medium text-blue-800">{seatsBreakdown.boardedSeats}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-600">可售票</span>
+                            <span className="font-bold text-blue-900">{seatsBreakdown.availableSeats}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {disposalInfo && (
+                      <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(disposal.category)}`}>
+                            {getCategoryLabel(disposal.category)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <strong>当前状态：</strong>{disposalInfo.reason}
+                        </div>
+                        {disposalInfo.requirements && disposalInfo.requirements.length > 0 && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <strong>操作要求：</strong>
+                            <ul className="list-disc list-inside">
+                              {disposalInfo.requirements.map((req, i) => (
+                                <li key={i}>{req}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {disposalInfo.warnings && disposalInfo.warnings.length > 0 && (
+                          <div className="mt-2 text-sm text-orange-600">
+                            <strong>注意事项：</strong>
+                            <ul className="list-disc list-inside">
+                              {disposalInfo.warnings.map((warn, i) => (
+                                <li key={i}>{warn}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
@@ -538,9 +685,9 @@ export default function BoardingVerification() {
                     {activeTab === "scan" ? (
                       <button
                         onClick={handleVerify}
-                        disabled={selectedPassengers.length === 0}
+                        disabled={selectedPassengers.length === 0 || (schedule && !validateBoarding(schedule.id, selectedOrder.id, selectedPassengers).canBoard)}
                         className={`flex-1 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                          selectedPassengers.length > 0
+                          selectedPassengers.length > 0 && schedule && validateBoarding(schedule.id, selectedOrder.id, selectedPassengers).canBoard
                             ? "bg-green-600 text-white hover:bg-green-700"
                             : "bg-gray-200 text-gray-400 cursor-not-allowed"
                         }`}
@@ -551,9 +698,9 @@ export default function BoardingVerification() {
                     ) : (
                       <button
                         onClick={handleManualBoard}
-                        disabled={selectedPassengers.length === 0}
+                        disabled={selectedPassengers.length === 0 || (schedule && !validateBoarding(schedule.id, selectedOrder.id, selectedPassengers).canBoard)}
                         className={`flex-1 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                          selectedPassengers.length > 0
+                          selectedPassengers.length > 0 && schedule && validateBoarding(schedule.id, selectedOrder.id, selectedPassengers).canBoard
                             ? "bg-blue-600 text-white hover:bg-blue-700"
                             : "bg-gray-200 text-gray-400 cursor-not-allowed"
                         }`}

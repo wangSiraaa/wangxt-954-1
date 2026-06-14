@@ -27,7 +27,7 @@ function addHours(dateStr: string, hours: number): string {
 }
 
 export const useWaitingListStore = create<WaitingListState>()(
-  persist(
+  persist<WaitingListState>(
     (set, get) => ({
       waitingLists: [],
 
