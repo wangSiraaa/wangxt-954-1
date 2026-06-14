@@ -31,8 +31,7 @@ function getScheduleStatusLabel(status: string) {
 
 function getOrderStatusColor(status: string) {
   const colors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-700",
-    paid: "bg-blue-100 text-blue-700",
+    pending: "bg-blue-100 text-blue-700",
     boarded: "bg-green-100 text-green-700",
     refunded: "bg-gray-100 text-gray-700",
     cancelled: "bg-red-100 text-red-700",
@@ -43,8 +42,7 @@ function getOrderStatusColor(status: string) {
 
 function getOrderStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    pending: "待支付",
-    paid: "已支付",
+    pending: "待登船",
     boarded: "已登船",
     refunded: "已退款",
     cancelled: "已取消",

@@ -27,7 +27,7 @@ interface ShipState {
 }
 
 export const useShipStore = create<ShipState>()(
-  persist(
+  persist<ShipState>(
     (set, get) => ({
       ships: [],
       inspections: [],

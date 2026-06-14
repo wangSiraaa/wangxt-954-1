@@ -424,7 +424,9 @@ export const useStopDayStore = create<StopDayState>()(
           try {
             const result = scheduleStore.cancelSchedule(
               scheduleId,
-              `${stopDay.type === "weather" ? "天气原因" : stopDay.type === "emergency" ? "紧急情况" : stopDay.type === "tide" ? "潮汐异常" : stopDay.type === "terminal-limit" ? "码头限流" : "计划"}停航: ${stopDay.reason}`
+              `${stopDay.type === "weather" ? "天气原因" : stopDay.type === "emergency" ? "紧急情况" : stopDay.type === "tide" ? "潮汐异常" : stopDay.type === "terminal-limit" ? "码头限流" : "计划"}停航: ${stopDay.reason}`,
+              "system",
+              { autoRefund: false }
             );
             affectedOrders += result.affectedOrders;
           } catch (e) {

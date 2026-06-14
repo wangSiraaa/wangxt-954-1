@@ -27,7 +27,7 @@ interface ScheduleState {
   addSchedule: (schedule: Omit<Schedule, "id">) => Schedule;
   updateSchedule: (id: string, data: Partial<Omit<Schedule, "id">>) => void;
   deleteSchedule: (id: string, operator?: string) => void;
-  cancelSchedule: (id: string, reason: string, operator?: string) => CancelScheduleResult;
+  cancelSchedule: (id: string, reason: string, operator?: string, options?: { autoRefund?: boolean }) => CancelScheduleResult;
   getByDate: (date: string) => Schedule[];
   getByRoute: (routeId: string) => Schedule[];
   getByShip: (shipId: string) => Schedule[];
@@ -145,7 +145,7 @@ export const useScheduleStore = create<ScheduleState>()(
         }));
       },
 
-      cancelSchedule: (id, reason, _operator) => {
+      cancelSchedule: (id, reason, _operator, options) => {
         const schedule = get().schedules.find((s) => s.id === id);
         if (!schedule) {
           throw new Error("班次不存在");
@@ -167,6 +167,7 @@ export const useScheduleStore = create<ScheduleState>()(
           (o) => o.status !== "refunded" && o.status !== "boarded"
         );
 
+        const autoRefund = options?.autoRefund ?? true;
         const refundsCreated: string[] = [];
         affectedOrders.forEach((order) => {
           if (order.status === "pending") {
@@ -176,15 +177,18 @@ export const useScheduleStore = create<ScheduleState>()(
                 amount: order.totalPrice,
                 reason: `班次取消: ${reason}`,
                 type: "flight-cancelled",
+                autoProcess: autoRefund,
               });
               refundsCreated.push(refundId);
 
-              const waitingLists = waitingStore.getByScheduleId(id);
-              waitingLists.forEach((w) => {
-                if (w.status === "waiting") {
-                  waitingStore.cancelWaitingList(w.id);
-                }
-              });
+              if (autoRefund) {
+                const waitingLists = waitingStore.getByScheduleId(id);
+                waitingLists.forEach((w) => {
+                  if (w.status === "waiting") {
+                    waitingStore.cancelWaitingList(w.id);
+                  }
+                });
+              }
             } catch (e) {
               console.error("创建退款失败:", e);
             }
