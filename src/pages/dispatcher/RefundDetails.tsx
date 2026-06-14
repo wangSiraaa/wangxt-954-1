@@ -87,10 +87,10 @@ export default function RefundDetails() {
     const completed = refundDetails.filter((r) => r.status === "completed").length;
     const totalAmount = refundDetails
       .filter((r) => r.status === "completed" || r.status === "approved")
-      .reduce((sum, r) => sum + r.refundAmount, 0);
+      .reduce((sum, r) => sum + (r.refundAmount ?? r.netAmount ?? 0), 0);
     const totalFee = refundDetails
       .filter((r) => r.status === "completed" || r.status === "approved")
-      .reduce((sum, r) => sum + r.feeAmount, 0);
+      .reduce((sum, r) => sum + (r.feeAmount ?? r.fee ?? 0), 0);
     return {
       total,
       pending,
@@ -151,11 +151,11 @@ export default function RefundDetails() {
         </div>
         <div className="bg-white rounded-xl p-4 border border-[#94A3B8]/20">
           <div className="text-xs text-[#64748B] mb-1">累计退款金额</div>
-          <div className="text-2xl font-bold text-[#F97316]">¥{stats.totalAmount.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-[#F97316]">¥{(stats.totalAmount ?? 0).toFixed(2)}</div>
         </div>
         <div className="bg-white rounded-xl p-4 border border-[#94A3B8]/20">
           <div className="text-xs text-[#64748B] mb-1">累计手续费</div>
-          <div className="text-2xl font-bold text-purple-600">¥{stats.totalFee.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-purple-600">¥{(stats.totalFee ?? 0).toFixed(2)}</div>
         </div>
       </div>
 
@@ -286,10 +286,10 @@ export default function RefundDetails() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">¥{refund.refundAmount.toFixed(2)}</div>
-                      {refund.feeAmount > 0 && (
+                      <div className="text-2xl font-bold text-green-600">¥{(refund.refundAmount ?? refund.netAmount ?? 0).toFixed(2)}</div>
+                      {(refund.feeAmount ?? refund.fee ?? 0) > 0 && (
                         <div className="text-sm text-[#64748B]">
-                          手续费：¥{refund.feeAmount.toFixed(2)} ({(refund.feePercent || feePercent).toFixed(0)}%)
+                          手续费：¥{(refund.feeAmount ?? refund.fee ?? 0).toFixed(2)} ({(refund.feePercent || feePercent).toFixed(0)}%)
                         </div>
                       )}
                       <div className="text-xs text-[#94A3B8] mt-1">
@@ -313,7 +313,7 @@ export default function RefundDetails() {
                           <DollarSign className="w-3 h-3" />
                           原订单金额
                         </div>
-                        <div className="font-medium text-[#0C4A6E]">¥{info.order.totalAmount.toFixed(2)}</div>
+                        <div className="font-medium text-[#0C4A6E]">¥{(info.order.totalAmount ?? info.order.totalPrice ?? 0).toFixed(2)}</div>
                       </div>
                       <div>
                         <div className="flex items-center gap-2 text-xs text-[#64748B] mb-1">

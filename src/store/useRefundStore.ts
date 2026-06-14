@@ -104,7 +104,9 @@ export const useRefundStore = create<RefundState>()(
         const newItem: RefundDetail = {
           ...data,
           fee,
+          feeAmount: fee,
           netAmount,
+          refundAmount: netAmount,
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           status: "pending",

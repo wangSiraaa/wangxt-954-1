@@ -8,7 +8,7 @@ type ShipInspectionWithoutId = Omit<ShipInspection, "id">;
 interface ShipInspectionState {
   inspections: ShipInspection[];
 
-  addInspection: (data: ShipInspectionWithoutId) => void;
+  addInspection: (data: ShipInspectionWithoutId) => ShipInspection;
   updateInspection: (id: string, data: Partial<ShipInspectionWithoutId>) => void;
   getByShipId: (shipId: string) => ShipInspection[];
   getLatestByShipId: (shipId: string) => ShipInspection | undefined;
@@ -44,6 +44,8 @@ export const useShipInspectionStore = create<ShipInspectionState>()(
             nextInspectionDate: data.nextInspectionDate,
           });
         }
+
+        return newItem;
       },
 
       updateInspection: (id, data) => {

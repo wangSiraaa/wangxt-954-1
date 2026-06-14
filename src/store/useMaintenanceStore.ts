@@ -7,7 +7,7 @@ type MaintenanceWithoutId = Omit<Maintenance, "id">;
 
 interface MaintenanceState {
   maintenances: Maintenance[];
-  addMaintenance: (maintenance: MaintenanceWithoutId) => void;
+  addMaintenance: (maintenance: MaintenanceWithoutId) => Maintenance;
   updateMaintenance: (id: string, data: Partial<MaintenanceWithoutId>) => void;
   deleteMaintenance: (id: string) => void;
   getActiveByShipId: (shipId: string) => Maintenance[];
@@ -27,6 +27,7 @@ export const useMaintenanceStore = create<MaintenanceState>()(
           maintenances: [...state.maintenances, newMaintenance],
         }));
         get().refreshShipStatus();
+        return newMaintenance;
       },
       updateMaintenance: (id, data) => {
         set((state) => ({

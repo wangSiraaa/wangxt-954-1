@@ -7,7 +7,7 @@ type CrewScheduleWithoutId = Omit<CrewSchedule, "id">;
 interface CrewState {
   crewSchedules: CrewSchedule[];
 
-  addCrewSchedule: (data: CrewScheduleWithoutId) => void;
+  addCrewSchedule: (data: CrewScheduleWithoutId) => CrewSchedule;
   updateCrewSchedule: (id: string, data: Partial<CrewScheduleWithoutId>) => void;
   deleteCrewSchedule: (id: string) => void;
   getByScheduleId: (scheduleId: string) => CrewSchedule | undefined;
@@ -28,6 +28,7 @@ export const useCrewStore = create<CrewState>()(
         }
         const newItem: CrewSchedule = { ...data, id: crypto.randomUUID() };
         set((state) => ({ crewSchedules: [...state.crewSchedules, newItem] }));
+        return newItem;
       },
       updateCrewSchedule: (id, data) => {
         set((state) => ({

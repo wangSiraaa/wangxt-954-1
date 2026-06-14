@@ -15,7 +15,7 @@ interface ShipState {
   ships: Ship[];
   inspections: ShipInspection[];
   maintenances: Maintenance[];
-  addShip: (ship: ShipWithoutId) => void;
+  addShip: (ship: ShipWithoutId) => Ship;
   updateShip: (id: string, data: Partial<ShipWithoutId>) => void;
   deleteShip: (id: string) => void;
   addInspection: (shipId: string, inspection: Omit<ShipInspection, "id" | "shipId">) => void;
@@ -35,6 +35,7 @@ export const useShipStore = create<ShipState>()(
       addShip: (ship) => {
         const newShip: Ship = { ...ship, id: crypto.randomUUID() };
         set((state) => ({ ships: [...state.ships, newShip] }));
+        return newShip;
       },
       updateShip: (id, data) => {
         set((state) => ({

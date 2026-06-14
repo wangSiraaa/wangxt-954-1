@@ -17,27 +17,27 @@ interface BaseState {
   tideWindows: TideWindow[];
   insurances: Insurance[];
 
-  addShipType: (data: ShipTypeWithoutId) => void;
+  addShipType: (data: ShipTypeWithoutId) => ShipType;
   updateShipType: (id: string, data: Partial<ShipTypeWithoutId>) => void;
   deleteShipType: (id: string) => void;
 
-  addCaptain: (data: CaptainWithoutId) => void;
+  addCaptain: (data: CaptainWithoutId) => Captain;
   updateCaptain: (id: string, data: Partial<CaptainWithoutId>) => void;
   deleteCaptain: (id: string) => void;
 
-  addDock: (data: DockWithoutId) => void;
+  addDock: (data: DockWithoutId) => Dock;
   updateDock: (id: string, data: Partial<DockWithoutId>) => void;
   deleteDock: (id: string) => void;
 
-  addRoute: (data: RouteWithoutId) => void;
+  addRoute: (data: RouteWithoutId) => Route;
   updateRoute: (id: string, data: Partial<RouteWithoutId>) => void;
   deleteRoute: (id: string) => void;
 
-  addTideWindow: (data: TideWindowWithoutId) => void;
+  addTideWindow: (data: TideWindowWithoutId) => TideWindow;
   updateTideWindow: (id: string, data: Partial<TideWindowWithoutId>) => void;
   getTideByDate: (date: string) => TideWindow | undefined;
 
-  addInsurance: (data: InsuranceWithoutId) => void;
+  addInsurance: (data: InsuranceWithoutId) => Insurance;
   updateInsurance: (id: string, data: Partial<InsuranceWithoutId>) => void;
   deleteInsurance: (id: string) => void;
 }
@@ -55,6 +55,7 @@ export const useBaseStore = create<BaseState>()(
       addShipType: (data) => {
         const newItem: ShipType = { ...data, id: crypto.randomUUID() };
         set((state) => ({ shipTypes: [...state.shipTypes, newItem] }));
+        return newItem;
       },
       updateShipType: (id, data) => {
         set((state) => ({
@@ -72,6 +73,7 @@ export const useBaseStore = create<BaseState>()(
       addCaptain: (data) => {
         const newItem: Captain = { ...data, id: crypto.randomUUID() };
         set((state) => ({ captains: [...state.captains, newItem] }));
+        return newItem;
       },
       updateCaptain: (id, data) => {
         set((state) => ({
@@ -89,6 +91,7 @@ export const useBaseStore = create<BaseState>()(
       addDock: (data) => {
         const newItem: Dock = { ...data, id: crypto.randomUUID() };
         set((state) => ({ docks: [...state.docks, newItem] }));
+        return newItem;
       },
       updateDock: (id, data) => {
         set((state) => ({
@@ -104,6 +107,7 @@ export const useBaseStore = create<BaseState>()(
       addRoute: (data) => {
         const newItem: Route = { ...data, id: crypto.randomUUID() };
         set((state) => ({ routes: [...state.routes, newItem] }));
+        return newItem;
       },
       updateRoute: (id, data) => {
         set((state) => ({
@@ -121,6 +125,7 @@ export const useBaseStore = create<BaseState>()(
       addTideWindow: (data) => {
         const newItem: TideWindow = { ...data, id: crypto.randomUUID() };
         set((state) => ({ tideWindows: [...state.tideWindows, newItem] }));
+        return newItem;
       },
       updateTideWindow: (id, data) => {
         set((state) => ({
@@ -136,6 +141,7 @@ export const useBaseStore = create<BaseState>()(
       addInsurance: (data) => {
         const newItem: Insurance = { ...data, id: crypto.randomUUID() };
         set((state) => ({ insurances: [...state.insurances, newItem] }));
+        return newItem;
       },
       updateInsurance: (id, data) => {
         set((state) => ({

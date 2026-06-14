@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import Layout from "@/components/Layout";
 import RoleSelect from "@/pages/RoleSelect";
@@ -19,19 +19,37 @@ import MyOrders from "@/pages/tourist/MyOrders";
 import BoardingRegister from "@/pages/dock/BoardingRegister";
 import BoardingRecords from "@/pages/dock/BoardingRecords";
 import BoardingVerification from "@/pages/dock/BoardingVerification";
-import { initDemoData } from "@/utils/demoData";
+import { initDemoData, clearAllStores } from "@/utils/demoData";
 
-export default function App() {
+function AppInitializer() {
+  const location = useLocation();
   useEffect(() => {
     try {
-      initDemoData();
+      const searchParams = new URLSearchParams(location.search);
+      const needReset = searchParams.get("reset") === "1" || searchParams.get("reset") === "true";
+      if (needReset) {
+        clearAllStores();
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+      const result = initDemoData();
+      if (result) {
+        console.log("[演示数据初始化]", result.message);
+        if (result.stats) console.log("[演示数据-统计]", JSON.stringify(result.stats, null, 2));
+        if (result.errors && result.errors.length > 0) console.log("[演示数据-问题]", result.errors);
+      }
     } catch (e) {
       console.error("初始化演示数据失败:", e);
     }
-  }, []);
+  }, [location.search]);
+  return null;
+}
+
+export default function App() {
 
   return (
     <Router>
+      <AppInitializer />
       <Routes>
         <Route path="/" element={<RoleSelect />} />
         <Route path="/dispatcher" element={<Layout role="dispatcher" />}>
