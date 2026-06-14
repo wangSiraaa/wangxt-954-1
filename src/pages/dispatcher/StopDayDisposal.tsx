@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Calendar, Clock, Ship, Users, RefreshCw, CheckCircle, XCircle, Info, ArrowRight, RefreshCcw, CreditCard, Ship as ShipIcon } from "lucide-react";
+import { AlertTriangle, Calendar, Clock, Users, RefreshCw, CheckCircle, XCircle, Info, RefreshCcw, CreditCard, Ship as ShipIcon } from "lucide-react";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useShipStore } from "@/store/useShipStore";
 import { useBaseStore } from "@/store/useBaseStore";
 import { useRefundStore } from "@/store/useRefundStore";
 import { useWaitingListStore } from "@/store/useWaitingListStore";
+import { useStopDayStore } from "@/store/useStopDayStore";
 import type { Schedule, Order } from "@/types";
 
 function getScheduleStatusColor(status: string) {
@@ -53,12 +54,13 @@ function getOrderStatusLabel(status: string) {
 }
 
 export default function StopDayDisposal() {
-  const { schedules, stopDays, cancelSchedule, addStopDay, removeStopDay } = useScheduleStore();
+  const { schedules, cancelSchedule } = useScheduleStore();
   const { orders, rescheduleOrder } = useOrderStore();
   const { ships } = useShipStore();
   const { routes, docks } = useBaseStore();
   const { refundDetails, createRefundForOrder } = useRefundStore();
   const { cancelWaitingListBySchedule } = useWaitingListStore();
+  const { stopDays, addStopDay, removeStopDay, getByDate: getStopDayByDate } = useStopDayStore();
 
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>("all");
   const [processing, setProcessing] = useState(false);
@@ -150,9 +152,9 @@ export default function StopDayDisposal() {
     setResult({ success: true, message: "停航日期设置成功" });
   };
 
-  const handleRemoveStopDay = (id: string) => {
+  const handleRemoveStopDay = (date: string) => {
     if (confirm("确定要取消这个停航日吗？相关班次将恢复正常。")) {
-      removeStopDay(id);
+      removeStopDay(date);
       setResult({ success: true, message: "已取消停航日" });
     }
   };
@@ -361,7 +363,7 @@ export default function StopDayDisposal() {
                     全额退款
                   </button>
                   <button
-                    onClick={handleAutoProcess}
+                    onClick={handleAutoProcessAll}
                     disabled={processing}
                     className="px-4 py-2 bg-[#0C4A6E] text-white rounded-lg text-sm font-medium hover:bg-[#083344] transition-colors flex items-center gap-2"
                   >
@@ -374,7 +376,7 @@ export default function StopDayDisposal() {
 
             {activeSchedules.length === 0 ? (
               <div className="text-center py-10 text-[#94A3B8]">
-                <Ship className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <ShipIcon className="w-10 h-10 mx-auto mb-2 opacity-40" />
                 <p>暂无运行中的班次</p>
               </div>
             ) : (
@@ -497,7 +499,7 @@ export default function StopDayDisposal() {
                       <div className="flex items-center gap-2">
                         <Info className="w-4 h-4 text-[#F97316]" />
                         <span className="text-sm text-[#9A3412]">
-                          停航原因：{schedule?.cancelReason || "天气原因"}
+                          停航原因：{schedule?.cancellationReason || "天气原因"}
                         </span>
                       </div>
                     </div>
@@ -537,6 +539,7 @@ export default function StopDayDisposal() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {selectedTab === "stopdays" && (
@@ -617,7 +620,7 @@ export default function StopDayDisposal() {
                       <div>{new Date(stopDay.createdAt).toLocaleString()}</div>
                     </div>
                     <button
-                      onClick={() => handleRemoveStopDay(stopDay.id)}
+                      onClick={() => handleRemoveStopDay(stopDay.date)}
                       className="px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
                     >
                       取消停航
@@ -651,7 +654,7 @@ export default function StopDayDisposal() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                          <Ship className="w-6 h-6 text-red-600" />
+                          <ShipIcon className="w-6 h-6 text-red-600" />
                         </div>
                         <div>
                           <div className="font-medium text-[#0C4A6E]">
@@ -673,7 +676,7 @@ export default function StopDayDisposal() {
                       <div className="flex items-center gap-2 mb-2">
                         <Info className="w-4 h-4 text-red-500" />
                         <span className="text-sm text-red-700">
-                          取消原因：{schedule.cancelReason || "未说明"}
+                          取消原因：{schedule.cancellationReason || "未说明"}
                         </span>
                       </div>
                     </div>

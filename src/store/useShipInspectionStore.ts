@@ -3,11 +3,13 @@ import { persist } from "zustand/middleware";
 import type { ShipInspection } from "../types";
 import { useShipStore } from "./useShipStore";
 
+type ShipInspectionWithoutId = Omit<ShipInspection, "id">;
+
 interface ShipInspectionState {
   inspections: ShipInspection[];
 
-  addInspection: (data: Omit<ShipInspection, "id">) => void;
-  updateInspection: (id: string, data: Partial<Omit<ShipInspection, "id">>) => void;
+  addInspection: (data: ShipInspectionWithoutId) => void;
+  updateInspection: (id: string, data: Partial<ShipInspectionWithoutId>) => void;
   getByShipId: (shipId: string) => ShipInspection[];
   getLatestByShipId: (shipId: string) => ShipInspection | undefined;
   isShipSafe: (shipId: string) => boolean;

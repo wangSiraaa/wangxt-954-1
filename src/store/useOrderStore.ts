@@ -17,15 +17,17 @@ interface TicketValidationResult {
   availableSeats: number;
 }
 
-interface OrderState {
-  orders: Order[];
-
-  addOrder: (order: Omit<Order, "id" | "createdAt" | "orderNo" | "qrCode" | "rescheduleHistory" | "insuranceAmount"> & {
+type OrderCreate = Omit<Order, "id" | "createdAt" | "orderNo" | "qrCode" | "rescheduleHistory" | "insuranceAmount"> & {
     passengers: Passenger[];
     insuranceId?: string;
     groupTicket?: Omit<GroupTicket, "id" | "orderId">;
     contactPhone?: string;
-  }) => string;
+  };
+
+interface OrderState {
+  orders: Order[];
+
+  addOrder: (order: OrderCreate) => string;
 
   validateTicketPurchase: (scheduleId: string, ticketCount: number, passengerIds?: string[]) => TicketValidationResult;
 

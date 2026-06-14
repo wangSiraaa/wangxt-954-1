@@ -5,11 +5,14 @@ import { useScheduleStore } from "./useScheduleStore";
 import { useOrderStore } from "./useOrderStore";
 import { usePassengerStore } from "./usePassengerStore";
 
+type WaitingListCreate = Omit<WaitingList, "id" | "position" | "status" | "createdAt" | "expiresAt">;
+
 interface WaitingListState {
   waitingLists: WaitingList[];
 
-  addWaitingList: (data: Omit<WaitingList, "id" | "position" | "status" | "createdAt" | "expiresAt">) => string;
+  addWaitingList: (data: WaitingListCreate) => string;
   cancelWaitingList: (id: string) => void;
+  cancelWaitingListBySchedule: (scheduleId: string, reason?: string) => void;
   convertToOrder: (id: string, operator?: string) => string | null;
   getByScheduleId: (scheduleId: string) => WaitingList[];
   getByContactPhone: (phone: string) => WaitingList[];
@@ -57,6 +60,16 @@ export const useWaitingListStore = create<WaitingListState>()(
         set((state) => ({
           waitingLists: state.waitingLists.map((w) =>
             w.id === id ? { ...w, status: "cancelled" } : w
+          ),
+        }));
+      },
+
+      cancelWaitingListBySchedule: (scheduleId, _reason) => {
+        set((state) => ({
+          waitingLists: state.waitingLists.map((w) =>
+            w.scheduleId === scheduleId && w.status === "waiting"
+              ? { ...w, status: "cancelled" }
+              : w
           ),
         }));
       },

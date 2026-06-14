@@ -4,6 +4,9 @@ export interface ShipType {
   capacity: number;
   description: string;
   safetyCertExpiry: string;
+  shipTypeId?: string;
+  passengerCapacity?: number;
+  length?: number;
 }
 
 export interface Captain {
@@ -13,6 +16,11 @@ export interface Captain {
   licenseExpiry: string;
   phone: string;
   status: "on-duty" | "off-duty" | "leave";
+  licenseLevel?: string;
+  yearsOfExperience?: number;
+  idCard?: string;
+  licenseValidDate?: string;
+  certifications?: string[];
 }
 
 export interface Dock {
@@ -56,12 +64,16 @@ export interface CrewSchedule {
 export interface Ship {
   id: string;
   name: string;
-  shipTypeId: string;
+  shipTypeId?: string;
   capacity: number;
-  status: "available" | "maintenance" | "in-operation" | "docked";
+  status: "available" | "maintenance" | "in-operation" | "docked" | "active";
   currentDockId?: string;
-  lastInspectionDate: string;
-  nextInspectionDate: string;
+  lastInspectionDate?: string;
+  nextInspectionDate?: string;
+  code?: string;
+  captainId?: string;
+  inspections?: ShipInspection[];
+  maintenances?: Maintenance[];
 }
 
 export interface Maintenance {
@@ -71,9 +83,11 @@ export interface Maintenance {
   endDate: string;
   reason: string;
   isActive: boolean;
-  type: "routine" | "repair" | "inspection";
+  type?: "routine" | "repair" | "inspection";
   inspector?: string;
   notes?: string;
+  status?: string;
+  plannedEndDate?: string;
 }
 
 export interface Schedule {
@@ -93,9 +107,13 @@ export interface Schedule {
 }
 
 export interface StopDay {
+  id: string;
   date: string;
+  routeId?: string;
   reason: string;
-  type: "weather" | "tide" | "emergency" | "scheduled";
+  type?: "weather" | "tide" | "emergency" | "scheduled";
+  operator?: string;
+  createdAt?: string;
   affectedRoutes?: string[];
 }
 
@@ -126,6 +144,13 @@ export interface WaitingList {
   position: number;
   createdAt: string;
   expiresAt: string;
+  waitingNo?: string;
+  touristName?: string;
+  phone?: string;
+  groupCount?: number;
+  insuranceId?: string;
+  convertedOrderId?: string;
+  remark?: string;
 }
 
 export interface RescheduleRecord {
@@ -143,13 +168,21 @@ export interface RefundDetail {
   id: string;
   orderId: string;
   amount: number;
-  fee: number;
-  netAmount: number;
+  fee?: number;
+  netAmount?: number;
   reason: string;
   type: "passenger-initiated" | "flight-cancelled" | "reschedule-fee";
-  status: "pending" | "completed" | "rejected";
+  status: "pending" | "completed" | "rejected" | "approved";
   createdAt: string;
   processedAt?: string;
+  refundNo?: string;
+  refundType?: string;
+  refundAmount?: number;
+  feeAmount?: number;
+  feePercent?: number;
+  rejectReason?: string;
+  operator?: string;
+  operatedAt?: string;
 }
 
 export interface GroupTicket {
@@ -185,10 +218,10 @@ export interface BoardingRecord {
   id: string;
   orderId: string;
   scheduleId: string;
-  passengerIds: string[];
+  passengerIds?: string[];
   boardedAt: string;
-  verifiedBy: string;
-  qrCodeScanned: boolean;
+  verifiedBy?: string;
+  qrCodeScanned?: boolean;
   notes?: string;
 }
 
@@ -200,11 +233,14 @@ export interface ShipInspection {
   items: {
     name: string;
     status: "pass" | "fail" | "na";
+    result?: "pass" | "fail" | "na";
     notes?: string;
   }[];
   overallResult: "pass" | "fail";
+  result?: "pass" | "fail";
   nextInspectionDate: string;
   notes?: string;
+  remark?: string;
 }
 
 export interface OperationStats {

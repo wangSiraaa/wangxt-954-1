@@ -1,11 +1,24 @@
 import { useState, useMemo } from "react";
-import { Calendar, Clock, Ship, Anchor, Waves, User, AlertTriangle, CheckCircle, XCircle, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Clock as ClockIcon,
+  Ship as ShipIcon,
+  Anchor as AnchorIcon,
+  Waves as WavesIcon,
+  User as UserIcon,
+  AlertTriangle as AlertTriangleIcon,
+  CheckCircle as CheckCircleIcon,
+  XCircle as XCircleIcon,
+  Info as InfoIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+} from "lucide-react";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useShipStore } from "@/store/useShipStore";
 import { useStopDayStore } from "@/store/useStopDayStore";
 import { useBaseStore } from "@/store/useBaseStore";
 import { useCrewStore } from "@/store/useCrewStore";
-import type { Schedule, Ship, Route, Dock } from "@/types";
+import type { Schedule, Ship as ShipType, Route as RouteType, Dock as DockType } from "@/types";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -86,19 +99,19 @@ export default function DispatcherCalendar() {
   }, [calYear, calMonth, daysInMonth, firstDay]);
 
   const routeMap = useMemo(() => {
-    const map: Record<string, Route> = {};
+    const map: Record<string, RouteType> = {};
     routes.forEach((r) => (map[r.id] = r));
     return map;
   }, [routes]);
 
   const dockMap = useMemo(() => {
-    const map: Record<string, Dock> = {};
+    const map: Record<string, DockType> = {};
     docks.forEach((d) => (map[d.id] = d));
     return map;
   }, [docks]);
 
   const shipMap = useMemo(() => {
-    const map: Record<string, Ship> = {};
+    const map: Record<string, ShipType> = {};
     ships.forEach((s) => (map[s.id] = s));
     return map;
   }, [ships]);
@@ -140,7 +153,7 @@ export default function DispatcherCalendar() {
   return (
     <div className="min-h-screen bg-[#F0F9FF] p-4 md:p-6">
       <div className="flex items-center gap-3 mb-6">
-        <Calendar className="w-7 h-7 text-[#0C4A6E]" />
+        <CalendarIcon className="w-7 h-7 text-[#0C4A6E]" />
         <h1 className="text-2xl font-bold text-[#0C4A6E]">调度日历</h1>
       </div>
 
@@ -149,13 +162,13 @@ export default function DispatcherCalendar() {
           <div className="bg-white rounded-xl p-5 border border-[#94A3B8]/20 sticky top-6">
             <div className="flex items-center justify-between mb-4">
               <button onClick={prevMonth} className="p-2 text-[#0C4A6E] hover:bg-[#F0F9FF] rounded-lg transition-colors">
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeftIcon className="w-5 h-5" />
               </button>
               <span className="font-semibold text-[#0C4A6E]">
                 {calYear}年{calMonth + 1}月
               </span>
               <button onClick={nextMonth} className="p-2 text-[#0C4A6E] hover:bg-[#F0F9FF] rounded-lg transition-colors">
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRightIcon className="w-5 h-5" />
               </button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs text-[#94A3B8] mb-1">
@@ -221,7 +234,7 @@ export default function DispatcherCalendar() {
           <div className="bg-white rounded-xl p-5 border border-[#94A3B8]/20">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#0C4A6E] flex items-center gap-2">
-                <Info className="w-5 h-5" />
+                <InfoIcon className="w-5 h-5" />
                 {selectedDate} 概览
               </h2>
             </div>
@@ -229,7 +242,7 @@ export default function DispatcherCalendar() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#F0F9FF] rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Ship className="w-5 h-5 text-[#0C4A6E]" />
+                  <ShipIcon className="w-5 h-5 text-[#0C4A6E]" />
                   <span className="text-sm text-[#64748B]">计划班次</span>
                 </div>
                 <div className="text-2xl font-bold text-[#0C4A6E]">
@@ -239,7 +252,7 @@ export default function DispatcherCalendar() {
 
               <div className="bg-red-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <XCircle className="w-5 h-5 text-red-500" />
+                  <XCircleIcon className="w-5 h-5 text-red-500" />
                   <span className="text-sm text-[#64748B]">取消班次</span>
                 </div>
                 <div className="text-2xl font-bold text-red-600">
@@ -249,7 +262,7 @@ export default function DispatcherCalendar() {
 
               <div className="bg-green-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <CheckCircleIcon className="w-5 h-5 text-green-500" />
                   <span className="text-sm text-[#64748B]">可用船只</span>
                 </div>
                 <div className="text-2xl font-bold text-green-600">
@@ -259,7 +272,7 @@ export default function DispatcherCalendar() {
 
               <div className="bg-yellow-50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="w-5 h-5 text-yellow-600" />
+                  <UserIcon className="w-5 h-5 text-yellow-600" />
                   <span className="text-sm text-[#64748B]">在岗船员</span>
                 </div>
                 <div className="text-2xl font-bold text-yellow-700">
@@ -271,7 +284,7 @@ export default function DispatcherCalendar() {
             {stopDayInfo && (
               <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <AlertTriangleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-red-700">停航通知</div>
                     <div className="text-sm text-red-600 mt-1">
@@ -293,7 +306,7 @@ export default function DispatcherCalendar() {
             {dayTide && (
               <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <Waves className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                  <WavesIcon className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <div className="font-medium text-blue-700 flex items-center gap-2">
                       潮汐信息
@@ -331,13 +344,13 @@ export default function DispatcherCalendar() {
 
           <div className="bg-white rounded-xl p-5 border border-[#94A3B8]/20">
             <h2 className="text-lg font-semibold text-[#0C4A6E] flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5" />
+              <ClockIcon className="w-5 h-5" />
               班次详情
             </h2>
 
             {daySchedules.length === 0 ? (
               <div className="text-center py-10 text-[#94A3B8]">
-                <Calendar className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <CalendarIcon className="w-10 h-10 mx-auto mb-2 opacity-40" />
                 <p>当日暂无班次</p>
               </div>
             ) : (
@@ -365,7 +378,7 @@ export default function DispatcherCalendar() {
                           <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
                             schedule.status === "cancelled" ? "bg-red-100" : "bg-[#0C4A6E]/10"
                           }`}>
-                            <Ship className={`w-6 h-6 ${schedule.status === "cancelled" ? "text-red-500" : "text-[#0C4A6E]"}`} />
+                            <ShipIcon className={`w-6 h-6 ${schedule.status === "cancelled" ? "text-red-500" : "text-[#0C4A6E]"}`} />
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -385,7 +398,7 @@ export default function DispatcherCalendar() {
 
                             {route && (
                               <div className="flex items-center gap-2 text-sm text-[#64748B] mb-2">
-                                <Anchor className="w-4 h-4" />
+                                <AnchorIcon className="w-4 h-4" />
                                 <span>{getDockName(route.startDockId)}</span>
                                 <span className="text-[#94A3B8]">→</span>
                                 <span>{getDockName(route.endDockId)}</span>
@@ -396,7 +409,7 @@ export default function DispatcherCalendar() {
 
                             <div className="flex items-center gap-4 text-sm flex-wrap">
                               <span className="flex items-center gap-1 text-[#64748B]">
-                                <Clock className="w-4 h-4" />
+                                <ClockIcon className="w-4 h-4" />
                                 {schedule.departureTime} - {schedule.arrivalTime}
                               </span>
                               <span className="text-[#F97316] font-medium">
@@ -428,7 +441,7 @@ export default function DispatcherCalendar() {
                             {crew.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-[#94A3B8]/10">
                                 <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                                  <User className="w-4 h-4" />
+                                  <UserIcon className="w-4 h-4" />
                                   <span>船员排班：</span>
                                   {crew.map((c, i) => (
                                     <span key={c.id} className="text-[#0C4A6E]">
@@ -460,7 +473,7 @@ export default function DispatcherCalendar() {
           {dayCrew.length > 0 && (
             <div className="bg-white rounded-xl p-5 border border-[#94A3B8]/20">
               <h2 className="text-lg font-semibold text-[#0C4A6E] flex items-center gap-2 mb-4">
-                <User className="w-5 h-5" />
+                <UserIcon className="w-5 h-5" />
                 船员排班
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -468,7 +481,7 @@ export default function DispatcherCalendar() {
                   <div key={crew.id} className="bg-[#F8FAFC] rounded-lg p-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#0C4A6E]/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-[#0C4A6E]" />
+                        <UserIcon className="w-5 h-5 text-[#0C4A6E]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-[#0C4A6E] text-sm truncate">
@@ -487,7 +500,7 @@ export default function DispatcherCalendar() {
 
           <div className="bg-white rounded-xl p-5 border border-[#94A3B8]/20">
             <h2 className="text-lg font-semibold text-[#0C4A6E] flex items-center gap-2 mb-4">
-              <Ship className="w-5 h-5" />
+              <ShipIcon className="w-5 h-5" />
               船只状态
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -500,7 +513,7 @@ export default function DispatcherCalendar() {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                         ship.status === "available" ? "bg-green-100" : ship.status === "maintenance" ? "bg-yellow-100" : "bg-blue-100"
                       }`}>
-                        <Ship className={`w-5 h-5 ${
+                        <ShipIcon className={`w-5 h-5 ${
                           ship.status === "available" ? "text-green-600" : ship.status === "maintenance" ? "text-yellow-600" : "text-blue-600"
                         }`} />
                       </div>

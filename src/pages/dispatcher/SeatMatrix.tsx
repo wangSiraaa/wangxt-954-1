@@ -419,7 +419,7 @@ export default function SeatMatrix() {
                 const status = getSeatStatusText(available, s.totalSeats);
                 const waiting = getByScheduleId(s.id).filter((w) => w.status === "waiting").length;
                 const ship = shipMap[s.shipId];
-                const shipType = ship ? getShipTypeInfo(ship.shipTypeId) : null;
+                const shipType = ship ? getShipTypeInfo(ship.shipTypeId || "") : null;
                 const route = routeMap[s.routeId];
                 const stopDay = isStopDay(s.date);
 

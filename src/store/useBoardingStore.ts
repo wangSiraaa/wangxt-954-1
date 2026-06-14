@@ -26,7 +26,7 @@ interface BoardingState {
   ) => { success: boolean; message?: string };
 
   getByScheduleId: (scheduleId: string) => BoardingRecord[];
-  getByOrderId: (orderId: string) => BoardingRecord | undefined;
+  getByOrderId: (orderId: string) => BoardingRecord[];
   getByDate: (date: string) => BoardingRecord[];
   getBoardingStats: (scheduleId: string) => {
     total: number;
@@ -125,7 +125,7 @@ export const useBoardingStore = create<BoardingState>()(
       },
 
       getByOrderId: (orderId) => {
-        return get().boardingRecords.find((r) => r.orderId === orderId);
+        return get().boardingRecords.filter((r) => r.orderId === orderId);
       },
 
       getByDate: (date) => {

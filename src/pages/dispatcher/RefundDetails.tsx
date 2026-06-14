@@ -258,7 +258,7 @@ export default function RefundDetails() {
             {filteredRefunds.map((refund) => {
               const info = getOrderInfo(refund.orderId);
               const feePercent = refund.feePercent ?? calculateRefundFeePercent(
-                info?.order ? new Date(info.order.createdAt) : new Date()
+                info?.order ? 24 : 24
               );
               return (
                 <div

@@ -2,11 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CrewSchedule } from "../types";
 
+type CrewScheduleWithoutId = Omit<CrewSchedule, "id">;
+
 interface CrewState {
   crewSchedules: CrewSchedule[];
 
-  addCrewSchedule: (data: Omit<CrewSchedule, "id">) => void;
-  updateCrewSchedule: (id: string, data: Partial<Omit<CrewSchedule, "id">>) => void;
+  addCrewSchedule: (data: CrewScheduleWithoutId) => void;
+  updateCrewSchedule: (id: string, data: Partial<CrewScheduleWithoutId>) => void;
   deleteCrewSchedule: (id: string) => void;
   getByScheduleId: (scheduleId: string) => CrewSchedule | undefined;
   getByCaptainId: (captainId: string) => CrewSchedule[];

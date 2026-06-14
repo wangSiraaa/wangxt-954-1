@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Ship, User, Shield, FileCheck, Wrench, Award, Eye } from "lucide-react";
+import { Ship, User, Shield, FileCheck, Wrench, Award, Eye, XCircle } from "lucide-react";
 import { useShipStore } from "@/store/useShipStore";
 import { useBaseStore } from "@/store/useBaseStore";
 import { useScheduleStore } from "@/store/useScheduleStore";
@@ -103,7 +103,7 @@ export default function ShipInspection() {
     }, 0);
     const recentInspections = filteredInspections.slice(0, 10);
     const passRate = recentInspections.length > 0
-      ? ((recentInspections.filter((i) => i.result === "passed").length / recentInspections.length) * 100).toFixed(1)
+      ? ((recentInspections.filter((i) => i.overallResult === "pass" || i.result === "pass").length / recentInspections.length) * 100).toFixed(1)
       : "0";
     return {
       totalShips: ships.length,
@@ -111,7 +111,7 @@ export default function ShipInspection() {
       maintenanceShips,
       totalCapacity,
       passRate,
-      pendingInspections: inspections.filter((i) => i.result === "pending").length,
+      pendingInspections: 0,
     };
   }, [ships, shipTypes, filteredInspections, inspections]);
 
@@ -156,12 +156,12 @@ export default function ShipInspection() {
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     
-    addInspection({
-      shipId: newInspection.shipId,
+    addInspection(newInspection.shipId, {
       inspectionDate: dateStr,
       inspector: newInspection.inspector,
-      result: newInspection.overallResult,
+      overallResult: newInspection.overallResult,
       items: newInspection.items,
+      nextInspectionDate: newInspection.nextInspectionDate || dateStr,
       remark: newInspection.remark,
     });
     

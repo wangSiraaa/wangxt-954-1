@@ -3,10 +3,12 @@ import { persist } from "zustand/middleware";
 import type { Maintenance } from "../types";
 import { useShipStore } from "./useShipStore";
 
+type MaintenanceWithoutId = Omit<Maintenance, "id">;
+
 interface MaintenanceState {
   maintenances: Maintenance[];
-  addMaintenance: (maintenance: Omit<Maintenance, "id">) => void;
-  updateMaintenance: (id: string, data: Partial<Omit<Maintenance, "id">>) => void;
+  addMaintenance: (maintenance: MaintenanceWithoutId) => void;
+  updateMaintenance: (id: string, data: Partial<MaintenanceWithoutId>) => void;
   deleteMaintenance: (id: string) => void;
   getActiveByShipId: (shipId: string) => Maintenance[];
   refreshShipStatus: () => void;

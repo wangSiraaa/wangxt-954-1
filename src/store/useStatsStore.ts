@@ -49,7 +49,7 @@ export const useStatsStore = create<StatsState>()(
         const daySchedules = scheduleStore.schedules.filter((s) => s.date === date);
         const routes = [...new Set(daySchedules.map((s) => s.routeId))];
 
-        const routeStats: OperationStats[] = routes.map((routeId) => {
+        const routeStats: OperationStats[] = routes.map((routeId: string) => {
           const routeSchedules = daySchedules.filter((s) => s.routeId === routeId);
           const scheduleIds = routeSchedules.map((s) => s.id);
 

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import Layout from "@/components/Layout";
 import RoleSelect from "@/pages/RoleSelect";
 import ShipManage from "@/pages/dispatcher/ShipManage";
@@ -18,8 +19,17 @@ import MyOrders from "@/pages/tourist/MyOrders";
 import BoardingRegister from "@/pages/dock/BoardingRegister";
 import BoardingRecords from "@/pages/dock/BoardingRecords";
 import BoardingVerification from "@/pages/dock/BoardingVerification";
+import { initDemoData } from "@/utils/demoData";
 
 export default function App() {
+  useEffect(() => {
+    try {
+      initDemoData();
+    } catch (e) {
+      console.error("初始化演示数据失败:", e);
+    }
+  }, []);
+
   return (
     <Router>
       <Routes>

@@ -2,12 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Passenger } from "../types";
 
+type PassengerWithoutId = Omit<Passenger, "id">;
+
 interface PassengerState {
   passengers: Passenger[];
 
-  addPassenger: (data: Omit<Passenger, "id">) => Passenger;
-  addOrUpdatePassenger: (data: Omit<Passenger, "id">) => Passenger;
-  updatePassenger: (id: string, data: Partial<Omit<Passenger, "id">>) => void;
+  addPassenger: (data: PassengerWithoutId) => Passenger;
+  addOrUpdatePassenger: (data: PassengerWithoutId) => Passenger;
+  updatePassenger: (id: string, data: Partial<PassengerWithoutId>) => void;
   deletePassenger: (id: string) => void;
   getById: (id: string) => Passenger | undefined;
   getByIds: (ids: string[]) => Passenger[];

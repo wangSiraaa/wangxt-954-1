@@ -16,19 +16,22 @@ interface ScheduleValidationResult {
   warnings: string[];
 }
 
+interface CancelScheduleResult {
+  affectedOrders: number;
+  refundsCreated: number;
+}
+
 interface ScheduleState {
   schedules: Schedule[];
-  addSchedule: (schedule: Omit<Schedule, "id">) => void;
-  updateSchedule: (id: string, data: Partial<Omit<Schedule, "id">) => void;
+  addSchedule: (schedule: Omit<Schedule, "id">) => Schedule;
+  updateSchedule: (id: string, data: Partial<Omit<Schedule, "id">>) => void;
   deleteSchedule: (id: string, operator?: string) => void;
-  cancelSchedule: (id: string, reason: string, operator?: string) => {
-    affectedOrders: number;
-    refundsCreated: number;
-  };
+  cancelSchedule: (id: string, reason: string, operator?: string) => CancelScheduleResult;
   getByDate: (date: string) => Schedule[];
   getByRoute: (routeId: string) => Schedule[];
   getByShip: (shipId: string) => Schedule[];
   getByDateAndRoute: (date: string, routeId: string) => Schedule[];
+  getByDateRange: (startDate: string, endDate: string) => Schedule[];
   validateSchedule: (schedule: Omit<Schedule, "id">) => ScheduleValidationResult;
   calculateAvailableSeats: (scheduleId: string) => number;
   getDockCapacityForTime: (dockId: string, date: string, time: string) => number;
@@ -140,7 +143,7 @@ export const useScheduleStore = create<ScheduleState>()(
         }));
       },
 
-      cancelSchedule: (id, reason, operator) => {
+      cancelSchedule: (id, reason, _operator) => {
         const schedule = get().schedules.find((s) => s.id === id);
         if (!schedule) {
           throw new Error("班次不存在");
@@ -208,6 +211,12 @@ export const useScheduleStore = create<ScheduleState>()(
         return get().schedules.filter((s) => s.date === date && s.routeId === routeId);
       },
 
+      getByDateRange: (startDate, endDate) => {
+        return get().schedules.filter(
+          (s) => s.date >= startDate && s.date <= endDate
+        );
+      },
+
       calculateAvailableSeats: (scheduleId) => {
         const schedule = get().schedules.find((s) => s.id === scheduleId);
         if (!schedule) return 0;
@@ -243,7 +252,7 @@ export const useScheduleStore = create<ScheduleState>()(
         return Math.max(0, dock.capacity - occupied);
       },
 
-      isWithinTideWindow: (date, time, routeId) => {
+      isWithinTideWindow: (date, time, _routeId) => {
         const baseStore = useBaseStore.getState();
         const tide = baseStore.getTideByDate(date);
         if (!tide) return true;

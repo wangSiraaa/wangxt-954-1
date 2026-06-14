@@ -2,6 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ShipType, Captain, Dock, Route, TideWindow, Insurance } from "../types";
 
+type ShipTypeWithoutId = Omit<ShipType, "id">;
+type CaptainWithoutId = Omit<Captain, "id">;
+type DockWithoutId = Omit<Dock, "id">;
+type RouteWithoutId = Omit<Route, "id">;
+type TideWindowWithoutId = Omit<TideWindow, "id">;
+type InsuranceWithoutId = Omit<Insurance, "id">;
+
 interface BaseState {
   shipTypes: ShipType[];
   captains: Captain[];
@@ -10,28 +17,28 @@ interface BaseState {
   tideWindows: TideWindow[];
   insurances: Insurance[];
 
-  addShipType: (data: Omit<ShipType, "id">) => void;
-  updateShipType: (id: string, data: Partial<Omit<ShipType, "id">>) => void;
+  addShipType: (data: ShipTypeWithoutId) => void;
+  updateShipType: (id: string, data: Partial<ShipTypeWithoutId>) => void;
   deleteShipType: (id: string) => void;
 
-  addCaptain: (data: Omit<Captain, "id">) => void;
-  updateCaptain: (id: string, data: Partial<Omit<Captain, "id">>) => void;
+  addCaptain: (data: CaptainWithoutId) => void;
+  updateCaptain: (id: string, data: Partial<CaptainWithoutId>) => void;
   deleteCaptain: (id: string) => void;
 
-  addDock: (data: Omit<Dock, "id">) => void;
-  updateDock: (id: string, data: Partial<Omit<Dock, "id">>) => void;
+  addDock: (data: DockWithoutId) => void;
+  updateDock: (id: string, data: Partial<DockWithoutId>) => void;
   deleteDock: (id: string) => void;
 
-  addRoute: (data: Omit<Route, "id">) => void;
-  updateRoute: (id: string, data: Partial<Omit<Route, "id">>) => void;
+  addRoute: (data: RouteWithoutId) => void;
+  updateRoute: (id: string, data: Partial<RouteWithoutId>) => void;
   deleteRoute: (id: string) => void;
 
-  addTideWindow: (data: Omit<TideWindow, "id">) => void;
-  updateTideWindow: (id: string, data: Partial<Omit<TideWindow, "id">>) => void;
+  addTideWindow: (data: TideWindowWithoutId) => void;
+  updateTideWindow: (id: string, data: Partial<TideWindowWithoutId>) => void;
   getTideByDate: (date: string) => TideWindow | undefined;
 
-  addInsurance: (data: Omit<Insurance, "id">) => void;
-  updateInsurance: (id: string, data: Partial<Omit<Insurance, "id">>) => void;
+  addInsurance: (data: InsuranceWithoutId) => void;
+  updateInsurance: (id: string, data: Partial<InsuranceWithoutId>) => void;
   deleteInsurance: (id: string) => void;
 }
 

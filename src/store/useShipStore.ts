@@ -1,27 +1,37 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Ship } from "../types";
+import type { Ship, ShipInspection, Maintenance } from "../types";
 import { useBaseStore } from "./useBaseStore";
+
+interface ShipTypeInfo {
+  name: string;
+  capacity: number;
+  shipTypeId?: string;
+}
+
+type ShipWithoutId = Omit<Ship, "id">;
 
 interface ShipState {
   ships: Ship[];
-  addShip: (ship: Omit<Ship, "id">) => void;
-  updateShip: (id: string, data: Partial<Omit<Ship, "id">) => void;
+  inspections: ShipInspection[];
+  maintenances: Maintenance[];
+  addShip: (ship: ShipWithoutId) => void;
+  updateShip: (id: string, data: Partial<ShipWithoutId>) => void;
   deleteShip: (id: string) => void;
+  addInspection: (shipId: string, inspection: Omit<ShipInspection, "id" | "shipId">) => void;
   setMaintenanceStatus: (id: string, status: Ship["status"]) => void;
   getAvailableShips: () => Ship[];
   getShipCapacity: (shipId: string) => number;
   isShipOperational: (shipId: string) => boolean;
-  getShipTypeInfo: (shipId: string) => {
-    name: string;
-    capacity: number;
-  } | null;
+  getShipTypeInfo: (shipId: string) => ShipTypeInfo | null;
 }
 
 export const useShipStore = create<ShipState>()(
   persist(
     (set, get) => ({
       ships: [],
+      inspections: [],
+      maintenances: [],
       addShip: (ship) => {
         const newShip: Ship = { ...ship, id: crypto.randomUUID() };
         set((state) => ({ ships: [...state.ships, newShip] }));
@@ -36,6 +46,16 @@ export const useShipStore = create<ShipState>()(
       deleteShip: (id) => {
         set((state) => ({
           ships: state.ships.filter((s) => s.id !== id),
+        }));
+      },
+      addInspection: (shipId, inspection) => {
+        const newInspection: ShipInspection = {
+          ...inspection,
+          id: crypto.randomUUID(),
+          shipId,
+        };
+        set((state) => ({
+          inspections: [...state.inspections, newInspection],
         }));
       },
       setMaintenanceStatus: (id, status) => {
@@ -71,7 +91,7 @@ export const useShipStore = create<ShipState>()(
           .getState()
           .shipTypes.find((t) => t.id === ship.shipTypeId);
         return shipType
-          ? { name: shipType.name, capacity: shipType.capacity }
+          ? { name: shipType.name, capacity: shipType.capacity, shipTypeId: shipType.id }
           : null;
       },
     }),

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { QrCode, User, Calendar, Clock, Ship, CheckCircle, XCircle, Search, Scan, Ticket } from "lucide-react";
+import { QrCode, User, Calendar, Clock, Ship as ShipIcon, CheckCircle, XCircle, Search, Scan, Ticket } from "lucide-react";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useScheduleStore } from "@/store/useScheduleStore";
 import { useShipStore } from "@/store/useShipStore";
@@ -37,7 +37,7 @@ function getStatusLabel(status: string) {
 }
 
 export default function BoardingVerification() {
-  const { orders, getByOrderNo, getByQRCode } = useOrderStore();
+  const { orders, getByOrderNo, verifyQRCode } = useOrderStore();
   const { schedules } = useScheduleStore();
   const { ships } = useShipStore();
   const { routes, docks } = useBaseStore();
@@ -67,12 +67,13 @@ export default function BoardingVerification() {
   }, [orders, schedules, todayStr]);
 
   const todayStats = useMemo(() => {
-    const stats = getBoardingStats(todayStr);
+    const totalPassengers = todayOrders.reduce((sum, o) => sum + o.ticketCount, 0);
+    const boardedPassengers = todayOrders.filter((o) => o.status === "boarded").reduce((sum, o) => sum + o.ticketCount, 0);
     return {
       totalOrders: todayOrders.length,
       boardedOrders: todayOrders.filter((o) => o.status === "boarded").length,
-      totalPassengers: todayOrders.reduce((sum, o) => sum + o.ticketCount, 0),
-      boardedPassengers: stats.totalPassengers,
+      totalPassengers,
+      boardedPassengers,
     };
   }, [todayOrders, getBoardingStats, todayStr]);
 
@@ -109,7 +110,11 @@ export default function BoardingVerification() {
   const handleSearch = () => {
     if (!searchInput.trim()) return;
     const keyword = searchInput.trim();
-    let order = getByQRCode(keyword);
+    let order: Order | undefined;
+    const qrResult = verifyQRCode(keyword);
+    if (qrResult.valid && qrResult.order) {
+      order = qrResult.order;
+    }
     if (!order) {
       order = getByOrderNo(keyword);
     }
@@ -142,9 +147,7 @@ export default function BoardingVerification() {
     try {
       const result = verifyAndBoard(
         selectedOrder.qrCode,
-        selectedPassengers,
-        "码头工作人员",
-        true
+        "码头工作人员"
       );
       if (result.success) {
         setVerificationResult({
@@ -170,7 +173,7 @@ export default function BoardingVerification() {
   const handleManualBoard = () => {
     if (!selectedOrder) return;
     try {
-      manualBoard(selectedOrder.id, selectedPassengers, "码头工作人员");
+      manualBoard(selectedOrder.id, "码头工作人员", selectedPassengers);
       setVerificationResult({
         success: true,
         message: `人工登船登记成功！已登记 ${selectedPassengers.length} 位乘客`,
@@ -296,7 +299,7 @@ export default function BoardingVerification() {
                 const routeInfo = routes.find((r) => r.id === s.routeId);
                 const scheduleOrders = todayOrders.filter((o) => o.scheduleId === s.id);
                 const boardedCount = scheduleOrders.filter((o) => o.status === "boarded").length;
-                const stats = getBoardingStats(todayStr, s.id);
+                const stats = getBoardingStats(s.id);
                 return (
                   <div
                     key={s.id}
@@ -305,7 +308,7 @@ export default function BoardingVerification() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg bg-[#0C4A6E]/10 flex items-center justify-center">
-                          <Ship className="w-6 h-6 text-[#0C4A6E]" />
+                          <ShipIcon className="w-6 h-6 text-[#0C4A6E]" />
                         </div>
                         <div>
                           <div className="font-medium text-[#0C4A6E]">
@@ -342,7 +345,7 @@ export default function BoardingVerification() {
                         <div className="text-xs text-[#64748B]">乘客数</div>
                       </div>
                       <div>
-                        <div className="text-xl font-bold text-blue-600">{stats.totalPassengers}</div>
+                        <div className="text-xl font-bold text-blue-600">{stats.boarded}</div>
                         <div className="text-xs text-[#64748B]">已核验</div>
                       </div>
                     </div>
@@ -459,7 +462,7 @@ export default function BoardingVerification() {
                   {schedule && (
                     <div className="bg-[#F0F9FF] rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <Ship className="w-4 h-4 text-[#0C4A6E]" />
+                        <ShipIcon className="w-4 h-4 text-[#0C4A6E]" />
                         <span className="font-medium text-[#0C4A6E]">
                           {ship ? ship.name : "未知船只"}
                         </span>

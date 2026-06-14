@@ -4,15 +4,20 @@ import type { RefundDetail } from "../types";
 import { useOrderStore } from "./useOrderStore";
 import { useScheduleStore } from "./useScheduleStore";
 
+type RefundWithoutId = Omit<RefundDetail, "id" | "createdAt" | "status">;
+
 interface RefundState {
   refundDetails: RefundDetail[];
 
-  addRefundDetail: (data: Omit<RefundDetail, "id" | "createdAt" | "status"> & { autoProcess?: boolean }) => string;
+  addRefundDetail: (data: RefundWithoutId & { autoProcess?: boolean }) => string;
+  createRefundForOrder: (orderId: string, fee: number, reason: string, operator?: string) => string;
   processRefund: (id: string, operator?: string) => void;
-  rejectRefund: (id: string, reason: string) => void;
+  approveRefund: (id: string, operator?: string) => void;
+  rejectRefund: (id: string, reason: string, operator?: string) => void;
   getByOrderId: (orderId: string) => RefundDetail[];
   getPendingRefunds: () => RefundDetail[];
   getRefundFee: (orderId: string, type: RefundDetail["type"]) => number;
+  calculateRefundFeePercent: (hoursBeforeDeparture: number) => number;
   calculateRefundStats: (startDate: string, endDate: string) => {
     totalAmount: number;
     totalFee: number;
@@ -33,6 +38,40 @@ export const useRefundStore = create<RefundState>()(
   persist(
     (set, get) => ({
       refundDetails: [],
+
+      calculateRefundFeePercent,
+
+      approveRefund: (id, operator) => {
+        const refund = get().refundDetails.find((r) => r.id === id);
+        if (!refund || refund.status !== "pending") return;
+        set((state) => ({
+          refundDetails: state.refundDetails.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  status: "approved",
+                  operator,
+                  operatedAt: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+        get().processRefund(id, operator);
+      },
+
+      createRefundForOrder: (orderId, fee, reason, _operator) => {
+        const order = useOrderStore.getState().orders.find((o) => o.id === orderId);
+        if (!order) {
+          throw new Error("订单不存在");
+        }
+        return get().addRefundDetail({
+          orderId,
+          amount: order.totalPrice,
+          fee,
+          reason,
+          type: "flight-cancelled",
+        });
+      },
 
       getRefundFee: (orderId, type) => {
         if (type === "flight-cancelled") return 0;
@@ -105,10 +144,18 @@ export const useRefundStore = create<RefundState>()(
         }
       },
 
-      rejectRefund: (id, reason) => {
+      rejectRefund: (id, reason, operator) => {
         set((state) => ({
           refundDetails: state.refundDetails.map((r) =>
-            r.id === id ? { ...r, status: "rejected", reason } : r
+            r.id === id
+              ? {
+                  ...r,
+                  status: "rejected",
+                  rejectReason: reason,
+                  operator,
+                  operatedAt: new Date().toISOString(),
+                }
+              : r
           ),
         }));
       },

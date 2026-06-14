@@ -3,15 +3,24 @@ import { persist } from "zustand/middleware";
 import type { StopDay } from "../types";
 import { useScheduleStore } from "./useScheduleStore";
 
+interface AddStopDayResult {
+  affectedSchedules: number;
+  affectedOrders: number;
+}
+
+type StopDayWithoutId = Omit<StopDay, "id">;
+type StopDayUpdate = Omit<StopDay, "date" | "id">;
+
 interface StopDayState {
   stopDays: StopDay[];
-  addStopDay: (stopDay: Omit<StopDay, "id">) => { affectedSchedules: number; affectedOrders: number };
-  updateStopDay: (date: string, data: Partial<Omit<StopDay, "date" | "id">>) => void;
+  addStopDay: (stopDay: StopDayWithoutId) => AddStopDayResult;
+  updateStopDay: (date: string, data: Partial<StopDayUpdate>) => void;
   removeStopDay: (date: string) => void;
   isStopDay: (date: string) => boolean;
   isRouteAffected: (date: string, routeId: string) => boolean;
   getByDateRange: (startDate: string, endDate: string) => StopDay[];
   getByType: (type: StopDay["type"]) => StopDay[];
+  getByDate: (date: string) => StopDay | undefined;
 }
 
 export const useStopDayStore = create<StopDayState>()(
@@ -20,7 +29,9 @@ export const useStopDayStore = create<StopDayState>()(
       stopDays: [],
 
       addStopDay: (stopDay) => {
-        const exists = get().stopDays.some((s) => s.date === stopDay.date);
+        const exists = get().stopDays.some(
+          (s) => s.date === stopDay.date && s.routeId === stopDay.routeId
+        );
         if (exists) {
           throw new Error("该日期已设置为停航日");
         }
@@ -28,6 +39,7 @@ export const useStopDayStore = create<StopDayState>()(
         const newStopDay: StopDay = {
           ...stopDay,
           id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
         };
 
         set((state) => ({
@@ -97,6 +109,10 @@ export const useStopDayStore = create<StopDayState>()(
 
       getByType: (type) => {
         return get().stopDays.filter((s) => s.type === type);
+      },
+
+      getByDate: (date) => {
+        return get().stopDays.find((s) => s.date === date);
       },
     }),
     { name: "scenic-stopdays" }

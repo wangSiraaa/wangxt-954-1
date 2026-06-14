@@ -14,6 +14,8 @@ const statusConfig: Record<
   pending: { label: "待登船", bgClass: "bg-[#0C4A6E]/10", textClass: "text-[#0C4A6E]" },
   boarded: { label: "已登船", bgClass: "bg-green-100", textClass: "text-green-700" },
   refunded: { label: "已退票", bgClass: "bg-[#94A3B8]/10", textClass: "text-[#94A3B8]" },
+  cancelled: { label: "已取消", bgClass: "bg-red-100", textClass: "text-red-700" },
+  rescheduled: { label: "已改签", bgClass: "bg-purple-100", textClass: "text-purple-700" },
 };
 
 const tabs: { key: FilterTab; label: string }[] = [
